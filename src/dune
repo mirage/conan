@@ -1,0 +1,5 @@
+(executable
+ (name magic)
+ (libraries unix re astring))
+
+(ocamllex integer)
