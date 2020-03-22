@@ -74,17 +74,21 @@ let float_literal =
   ('.' [ '0'-'9' '_']*)?
   ([ 'e' 'E' ] [ '+' '-' ]? [ '0'-'9' ] [ '0'-'9' '_' ]*)?
 
-rule parser = parse
+rule int_or_float = parse
   | (('-' | '+')* int_literal) as lit { Ok (`Int lit) }
   | (('-' | '+')* float_literal) as lit { Ok (`Float lit) }
+  | _ { Error `Malformed }
+
+and int = parse
+  | (('-' | '+')* int_literal) as lit { Ok lit }
   | _ { Error `Malformed }
 
 and string buf = parse
   | '\\' ([ '\\' '\'' '\"' 'n' 't' 'b' 'r' ' ' ] as chr)
       { add_escaped_char lexbuf buf (char_for_backslash chr)
       ; string buf lexbuf }
-  | '\\' [ '0'-'9' ] [ '0'-'9' ] [ '0'-'9' ]
-      { add_escaped_char lexbuf buf (char_for_decimal_code lexbuf 1)
+  | '\\' [ '0'-'7' ] [ '0'-'7' ] [ '0'-'7' ]
+      { add_escaped_char lexbuf buf (char_for_octal_code lexbuf 1)
       ; string buf lexbuf }
   | '\\' 'o' [ '0'-'7' ] [ '0'-'7' ] [ '0'-'7' ]
       { add_escaped_char lexbuf buf (char_for_octal_code lexbuf 2)

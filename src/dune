@@ -2,4 +2,4 @@
  (name magic)
  (libraries unix re astring))
 
-(ocamllex integer)
+(ocamllex lexer)

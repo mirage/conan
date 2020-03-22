@@ -12,19 +12,12 @@ let ( >|= ) x f = match x with
 
 let ( <.> ) f g = fun x -> f (g x)
 
-let invalid_arg fmt = Format.kasprintf invalid_arg fmt
-
 open Astring.String.Sub
-
-let is_op = function '+' | '-' | '*' | '/' | '%' | '&' | '|' | '^' -> true | _ -> false
 
 let is_wsp = function ' ' | '\t' .. '\r' -> true | _ -> false
 
-let is_size = function 'Q' | 'q' | 'B' | 'b' | 'C' | 'c' | 's' | 'h' | 'S' | 'H' | 'l' | 'L' | 'm' | 'i' | 'I' -> true | _ -> false
-
 let is_digit = function '0' .. '9' -> true | _ -> false
 
-let is_compare = function '=' | '!' | '<' | '>' | '&' | '^' -> true | _ -> false
 let is_greater = function '>' -> true | _ -> false
 
 let is_ampersand = function '&' -> true | _ -> false
@@ -35,59 +28,11 @@ let is_b = function 'b' -> true | _ -> false
 let is_B = function 'B' -> true | _ -> false
 let is_s = function 's' -> true | _ -> false
 let is_r = function 'r' -> true | _ -> false
-
-type size =
-  | Byte | Leshort | Beshort | Lelong | Belong | Melong
-  | Leid3 | Beid3 | Lequad | Bequad
-
-let size_of_string = function
-  | "B" | "b" | "C" | "c" -> Byte
-  | "s" | "h" -> Leshort
-  | "S" | "H" -> Beshort
-  | "l" -> Lelong
-  | "L" -> Belong
-  | "m" -> Melong
-  | "i" -> Leid3
-  | "I" -> Beid3
-  | "q" -> Lequad
-  | "Q" -> Bequad
-  | v -> invalid_arg "Invalid size: %S" v
-
-type op = Add | Sub | Mul | Div | Mod | And | Or | Xor
-
-let op_of_string = function
-  | "+" -> Add
-  | "-" -> Sub
-  | "*" -> Mul
-  | "/" -> Div
-  | "%" -> Mod
-  | "&" -> And
-  | "|" -> Or
-  | "^" -> Xor
-  | v -> invalid_arg "Invalid operator: %S" v
-
-type number =
-  | Int of int64
-  | Float of float
-
-let parse_number s =
-  let lexbuf = Lexing.from_string (to_string s) in
-  match Integer.parser lexbuf with
-  | Ok (`Int literal) ->
-    let first = Lexing.lexeme_end lexbuf in
-    Ok (Int (Int64.of_string literal), with_range ~first s)
-  | Ok (`Float literal) ->
-    let first = Lexing.lexeme_end lexbuf in
-    Ok (Float (float_of_string literal), with_range ~first s)
-  | Error `Malformed -> Error (`Invalid_number s)
-
-let parse_int s =
-  let lexbuf = Lexing.from_string (to_string s) in
-  match Integer.parser lexbuf with
-  | Ok (`Int literal) ->
-    let first = Lexing.lexeme_end lexbuf in
-    Ok (Int64.of_string literal, with_range ~first s)
-  | _ -> Error (`Invalid_integer s)
+let is_l = function 'l' -> true | _ -> false
+let is_t = function 't' -> true | _ -> false
+let is_T = function 'T' -> true | _ -> false
+let is_w = function 'w' -> true | _ -> false
+let is_W = function 'W' -> true | _ -> false
 
 let lparent = v "(" and rparent = v ")"
 let ampersand = v "&"
@@ -98,15 +43,15 @@ let slash = v "/"
 
 let parse_disp s =
   if is_prefix ~affix:lparent s && is_suffix ~affix:rparent s
-  then parse_int ((tail <.> tail ~rev:true) s) >|= fun (v, s) -> (`Ind v, s)
-  else parse_int s >|= fun (v, s) -> (`Dir v, s)
+  then Integer.parse ((tail <.> tail ~rev:true) s) >|= fun (v, s) -> (`Ind v, s)
+  else Integer.parse s >|= fun (v, s) -> (`Dir v, s)
 
 let parse_abs_or_rel s =
   let rel, s =
     if is_prefix ~affix:ampersand s
     then true, tail s
     else false, s in
-  parse_int s >|= fun (v, s) ->
+  Integer.parse s >|= fun (v, s) ->
   if rel
   then (`Rel v, s)
   else (`Abs v, s)
@@ -119,22 +64,29 @@ let parse_indirect_offset s =
     let size, s =
       if is_prefix ~affix:dot s
       then
-        let size, s = (span ~max:1 ~sat:is_size <.> tail) s in
-        Some ((size_of_string <.> to_string) size), s
+        let size, s = (span ~max:1 ~sat:Size.is_size <.> tail) s in
+        Some ((Size.of_string <.> to_string) size), s
       else None, s in
-    let op, s =
+    let arithmetic, s =
       let invert, s =
         if is_prefix ~affix:tilde s
         then true, tail s
         else false, s in
-      let op, s = span ~min:1 ~max:1 ~sat:is_op s in
-      if length op = 1
-      then Some (invert, (op_of_string <.> to_string) op), s
+      let arithmetic, s = span ~min:1 ~max:1 ~sat:Arithmetic.is s in
+      if length arithmetic = 1
+      then Some (invert, to_string arithmetic), s
       else None, s in
-    match op with
-    | Some (invert, op) -> parse_disp s >|= fun (disp, _) -> offset, size, Some (invert, op, disp)
+    match arithmetic with
+    | Some (invert, arithmetic) ->
+      parse_disp s >>= fun (disp, empty) ->
+      if is_empty empty
+      then
+        let arithmetic = Arithmetic.of_string ~with_val:disp arithmetic in
+        let arithmetic = if invert then Arithmetic.invert arithmetic else arithmetic in
+        Ok (offset, size, Some arithmetic)
+      else Error (`Unexpected_trailer empty)
     | None -> Ok (offset, size, None)
-  else Error (`Malformed s)
+  else Error (`Unmatched_parenthesis s)
 
 let parse_offset s =
   let level, s = span ~sat:is_greater s in
@@ -142,10 +94,10 @@ let parse_offset s =
   if is_prefix ~affix:lparent ss
   then parse_indirect_offset ss >|= fun v ->
     length level, `Ind ((if not (is_empty rel) then `Rel else `Abs), v)
-  else parse_abs_or_rel s >>= fun (offset, s) ->
-    if is_empty s
+  else parse_abs_or_rel s >>= fun (offset, empty) ->
+    if is_empty empty
     then Ok (length level, offset)
-    else Error (`Unprocessed s)
+    else Error (`Unexpected_trailer s)
 
 let prefix ~affix s =
   match cut ~sep:affix s with
@@ -222,7 +174,7 @@ let parse_type s =
     | false, true, false -> Some `BE
     | false, false, true -> Some `ME
     | false, false, false -> None
-    | _ -> assert false in
+    | _ -> assert false (* XXX(dinosaure): should never occur! *) in
   res >>= fun (kind, s) -> match kind with
   | `Clear -> Ok (unsigned, `Clear)
   | `Indirect ->
@@ -233,43 +185,70 @@ let parse_type s =
         then
           let has_r = exists is_r s in
           Ok (unsigned, `Indirect has_r)
-        else Error (`Unprocessed empty) )
+        else Error (`Unexpected_trailer empty) )
   | #default -> Ok (unsigned, `Default)
   | #regex ->
     ( match cut ~sep:slash s with
       | None -> Ok (unsigned, `Regex None)
       | Some (empty, s) ->
         if is_empty empty
-        then
-          let has_c = exists is_c s in
-          let has_s = exists is_s s in
-          let s = trim ~drop:(( not ) <.> is_digit) s in
-          Ok (unsigned, `Regex (Some (has_c, has_s, to_int s)))
-        else Error (`Unprocessed empty) )
+        then match cut ~sep:slash s with
+          | Some (a, b) ->
+            let limit, flags = if for_all is_digit a then a, b else b, a in
+            let has_c = exists is_c flags in
+            let has_s = exists is_s flags in
+            let has_l = exists is_l flags in
+            Integer.parse limit >>= fun (limit, _empty) ->
+            Ok (unsigned, `Regex (Some (has_c, has_s, has_l, limit)))
+          | None ->
+            if for_all is_digit s
+            then Integer.parse s >>= fun (limit, _empty) ->
+              Ok (unsigned, `Regex (Some (false, false, false, limit)))
+            else
+              let has_c = exists is_c s in
+              let has_s = exists is_s s in
+              let has_l = exists is_l s in
+              Ok (unsigned, `Regex (Some (has_c, has_s, has_l, 8192L)))
+        else Error (`Unexpected_trailer empty) )
   | `String | `Search ->
     ( match cut ~sep:slash s with
       | None -> Ok (unsigned, `Search None)
       | Some (empty, s) ->
         if is_empty empty
-        then
-          let has_b = exists is_b s in
-          let has_B = exists is_B s in
-          let has_c = exists is_c s in
-          let has_C = exists is_C s in
-          let s = trim ~drop:(( not ) <.> is_digit) s in
-          if is_empty s
-          then Ok (unsigned, `Search (Some (has_b,
-                                            has_B,
-                                            has_c,
-                                            has_C,
-                                            None)))
-          else parse_int s >>= fun (v, _) ->
-            Ok (unsigned, `Search (Some (has_b,
-                                         has_B,
-                                         has_c,
-                                         has_C,
-                                         Some v)))
-        else Error (`Unprocessed empty) )
+        then match cut ~sep:slash s with
+          | Some (a, b) ->
+            let limit, flags = if for_all is_digit a then a, b else b, a in
+            let v = [] in
+            let v = if exists is_b flags then `b :: v else v in
+            let v = if exists is_B flags then `B :: v else v in
+            let v = if exists is_c flags then `c :: v else v in
+            let v = if exists is_C flags then `C :: v else v in
+            let v = if exists is_t flags then `t :: v else v in
+            let v = if exists is_W flags then `W :: v else v in
+            let v = if exists is_w flags then `w :: v else v in
+            let v = if exists is_T flags then `T :: v else v in
+            Integer.parse limit >>= fun (limit, empty) ->
+            if is_empty empty
+            then Ok (unsigned, `Search (Some (v, Some limit)))
+            else Error (`Unexpected_trailer empty)
+          | None ->
+            match Integer.parse s with
+            | Ok (limit, empty) ->
+              if is_empty empty
+              then Ok (unsigned, `Search (Some ([], Some limit)))
+              else Error (`Unexpected_trailer empty)
+            | Error (`Empty | `Invalid_integer _) ->
+              let v = [] in
+              let v = if exists is_b s then `b :: v else v in
+              let v = if exists is_B s then `B :: v else v in
+              let v = if exists is_c s then `c :: v else v in
+              let v = if exists is_C s then `C :: v else v in
+              let v = if exists is_t s then `t :: v else v in
+              let v = if exists is_W s then `W :: v else v in
+              let v = if exists is_w s then `w :: v else v in
+              let v = if exists is_T s then `T :: v else v in
+              Ok (unsigned, `Search (Some (v, None)))
+        else Error (`Unexpected_trailer empty) )
   | `Pstring ->
     ( match cut ~sep:slash s with
       | None -> Ok (unsigned, `String8 None)
@@ -281,52 +260,52 @@ let parse_type s =
           let has_c = exists is_c s in
           let has_C = exists is_C s in
           Ok (unsigned, `String8 (Some (has_b, has_B, has_c, has_C)))
-        else Error (`Unprocessed empty) )
+        else Error (`Unexpected_trailer empty) )
   | `String16 ->
     ( match endian with
       | Some (`LE | `BE as endian) -> Ok (unsigned, `String16 endian)
       | _ -> Error `Unsupported_type )
   | #numeric as numeric ->
-    let op, s =
-      let op, s = span ~min:1 ~max:1 ~sat:is_op s in
-      if length op = 1
-      then Some ((op_of_string <.> to_string) op), s
+    let arithmetic, s =
+      let arithmetic, s = span ~min:1 ~max:1 ~sat:Arithmetic.is s in
+      if length arithmetic = 1
+      then Some (to_string arithmetic), s
       else None, s in
-    match op with
-    | Some op -> parse_int s >|= fun (v, _) -> unsigned, `Numeric (endian, numeric, Some (op, v))
+    match arithmetic with
+    | Some arithmetic -> Integer.parse s >>= fun (with_val, empty) ->
+      if is_empty empty
+      then Ok (unsigned, `Numeric (endian, numeric,
+                                   Some (Arithmetic.of_string ~with_val arithmetic)))
+      else Error (`Unexpected_trailer empty)
     | None -> Ok (unsigned, `Numeric (endian, numeric, None))
 
 let x = v "x"
 
-type compare =
-  | Equal | Not | Greater | Lower | And | Xor
-
-let compare_of_string = function
-  | "=" -> Equal
-  | "!" -> Not
-  | "<" -> Greater
-  | ">" -> Lower
-  | "&" -> And
-  | "^" -> Xor
-  | v -> invalid_arg "Invalid compare: %S" v
+let is_x s =
+  let s = trim ~drop:is_wsp s in
+  equal_bytes s x
 
 let parse_test s =
-  if equal_bytes s x then Ok `True
+  if is_x s then Ok `True
   else
-    let compare, s = span ~min:1 ~max:1 ~sat:is_compare s in
-    let compare =
-      if is_empty compare
-      then compare_of_string "=" else (compare_of_string <.> to_string) compare in
-    match parse_number s with
-    | Ok (v, empty) ->
-      if is_empty empty
-      then Ok (`Numeric (compare, v))
-      else Ok (`String (compare, to_string s))
-    | Error _ ->
+    let comparison, s = span ~min:1 ~max:1 ~sat:Comparison.is s in
+    let comparison =
+      if is_empty comparison
+      then "=" else to_string comparison in
+    let parse_string s =
       let lexbuf = Lexing.from_string (to_string s) in
       let buf = Buffer.create (length s) in
-      let contents = Integer.string buf lexbuf in (* escape *)
-      Ok (`String (compare, contents))
+      let contents = Lexer.string buf lexbuf in (* escape *)
+      Ok (`String (Comparison.of_string ~with_val:contents comparison)) in
+    match Number.parse s with
+    | Ok (v, empty) ->
+      if is_empty empty
+      then Ok (`Numeric (Comparison.of_string ~with_val:v comparison))
+      else parse_string s
+    | Error (`Invalid_number _ | `Empty) ->
+      if is_empty s
+      then Ok (`Numeric (Comparison.of_string ~with_val:(Number.int64 0L) comparison))
+      else parse_string s
 
 let parse_message s = match head s with
   | Some '\x08' ->
@@ -337,20 +316,15 @@ let parse_message s = match head s with
       | _ -> Ok (`Space (to_string s)) )
   | _ -> Ok (`Space (to_string s))
 
-type operation = Add | Sub | Mul | Div
-let operation_of_string = function
-  | "+" -> Add
-  | "*" -> Mul
-  | "/" -> Div
-  | "-" -> Sub
-  | v -> invalid_arg "Invalid operation: %S" v
-
 let parse_strength s =
   let s = trim ~drop:is_wsp s in
-  let op, s = span ~min:1 ~max:1 ~sat:(function '+' | '*' | '/' | '-' -> true | _ -> false) s in
+  let arithmetic, s = span ~min:1 ~max:1 ~sat:Arithmetic.is s in
   let s = trim ~drop:is_wsp s in
-  if length op = 1
-  then parse_int s >|= fun (v, _) -> ((operation_of_string <.> to_string) op), v
+  if length arithmetic = 1
+  then Integer.parse s >>= fun (with_val, empty) ->
+    if is_empty empty
+    then Ok (Arithmetic.of_string ~with_val (to_string arithmetic))
+    else Error (`Unexpected_trailer empty)
   else Error `Invalid_strength
 
 let hws = v "\t"
@@ -360,20 +334,23 @@ type rule = offset * kind * test * message
 and offset =
   int * [ `Abs of int64
         | `Rel of int64
-        | `Ind of [ `Abs | `Rel ] * ([ `Abs of int64 | `Rel of int64 ]
-                                     * size option
-                                     * (bool * op * [ `Ind of int64 | `Dir of int64 ]) option) ]
+        | `Ind of [ `Abs | `Rel ]
+                  * ([ `Abs of int64 | `Rel of int64 ]
+                     * Size.t option
+                     * ([ `Dir of int64 | `Ind of int64 ] Arithmetic.t) option) ]
 and kind =
-  bool * [ `Numeric of [ `BE | `LE | `ME ] option * numeric * (op * int64) option
+  bool * [ `Numeric of [ `BE | `LE | `ME ] option * numeric * int64 Arithmetic.t option
          | `Default | `Clear | `Indirect of bool
-         | `Regex of (bool * bool * int option) option
+         | `Regex of (bool * bool * bool * int64) option
          | `String16 of [ `BE | `LE ]
          | `String8 of (bool * bool * bool * bool) option
-         | `Search of (bool * bool * bool * bool * int64 option) option ]
+         | `Search of (search_flag list * int64 option) option ]
+and search_flag =
+  [ `t | `T | `b | `B | `c | `C | `w | `W ]
 and test =
   [ `True
-  | `Numeric of compare * number
-  | `String of compare * string ]
+  | `Numeric of Number.t Comparison.t
+  | `String of string Comparison.t ]
 and message = [ `No_space of string | `Space of string ]
 
 type line =
@@ -381,22 +358,38 @@ type line =
   | `Apple of string
   | `Ext of string
   | `Mime of string
-  | `Strength of (operation * int64)
+  | `Strength of int64 Arithmetic.t
   | `Rule of rule
   | `Name of offset * string
   | `Guid of offset * string
   | `Use of offset * string ]
 
+(* TODO(dinosaure): we should clear semantic of this function:
+   "x\t" returns ("x", [])
+*)
 let best_effort s = match cuts ~empty:false ~sep:hws s with
-  | [] -> Error (`Malformed s)
-  | [ _ ] ->
+  | [] -> Error (`Missing_test s)
+  | [ test0 ] ->
     ( match cuts ~empty:false ~sep:wsp s with
-      | [] -> Error (`Malformed s)
-      | [ test ] -> Ok (test, [])
-      | test :: message -> Ok (test, message) )
+      | [] -> Ok (test0, [])
+      | [ test1 ] ->
+        if is_empty test0 then Ok (test1, []) else Ok (test0, [])
+      | test1 :: message -> Ok (test1, message) )
   | test :: message -> Ok (test, message)
 
-let parse_line line =
+type error =
+  [ `Empty
+  | `Missing_test of s
+  | `Unmatched_parenthesis of s
+  | `Unexpected_trailer of s
+  | `Invalid_number of s
+  | `Invalid_integer of string
+  | `Invalid_strength
+  | `Invalid_type of s
+  | `No_prefix of (s * s)
+  | `Unsupported_type ]
+
+let parse_line line : (line, error) result =
   match Astring.String.head line with
   | None | Some '#' -> Ok `Comment
   | _ ->
@@ -426,31 +419,25 @@ let parse_line line =
         parse_message (concat ~sep:wsp message) >>= fun message ->
         Ok (`Rule (offset, ty, test, message))
 
-type error =
-  [ `Unprocessed of s
-  | `Invalid_number of s
-  | `Invalid_integer of s
-  | `Invalid_strength
-  | `Invalid_type of s
-  | `Malformed of s
-  | `No_prefix of (s * s)
-  | `Unexpected of string
-  | `Unsupported_type ]
-
 let pp_error ppf err =
   let pp = Format.fprintf in
   let to_string = Astring.String.Sub.to_string in
 
   match err with
-  | `Unprocessed s -> pp ppf "Unprocessed %S" (to_string s)
   | `Invalid_number s -> pp ppf "Invalid number %S" (to_string s)
-  | `Invalid_integer s -> pp ppf "Invalid integer %S" (to_string s)
+  | `Invalid_integer s -> pp ppf "Invalid integer %S" s
   | `Invalid_strength -> pp ppf "Invalid strength"
   | `Invalid_type s -> pp ppf "Invalid type %S" (to_string s)
-  | `Malformed s -> pp ppf "Malformed %S" (to_string s)
-  | `No_prefix (prefix, s) -> pp ppf "Expected prefix %S on %S" (to_string prefix) (to_string s)
-  | `Unexpected s -> pp ppf "Unexpected %S" s
+  | `No_prefix (prefix, s) ->
+    pp ppf "Expected prefix %S on %S" (to_string prefix) (to_string s)
   | `Unsupported_type -> pp ppf "Unsupported type"
+  | `Unmatched_parenthesis s ->
+    pp ppf "Unmatched parenthesis %S" (to_string s)
+  | `Unexpected_trailer s ->
+    pp ppf "Unexpected_trailer %S" (to_string s)
+  | `Missing_test s ->
+    pp ppf "Missing test %S" (to_string s)
+  | `Empty -> pp ppf "Empty string"
 
 let parse_in_channel ic =
   let rec go acc = match input_line ic with
