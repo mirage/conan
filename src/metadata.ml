@@ -15,4 +15,5 @@ let with_mime mime t = { t with mime= Some mime }
 let with_output output t = { t with output }
 
 let output { output; _ } = output
+let mime { mime; _ } = mime
 let empty = { output= ""; mime= None }

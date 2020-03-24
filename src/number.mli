@@ -12,7 +12,5 @@ val to_int32 : t -> int32
 val to_short : t -> int
 val to_byte : t -> char
 
-type s = Astring.String.Sub.t
-
-val parse : s -> (t * s, [> `Empty
-                         |  `Invalid_number of string ]) result
+val parse : Sub.t -> (t * Sub.t, [> `Empty
+                                 |  `Invalid_number of string ]) result

@@ -84,7 +84,7 @@ and int = parse
   | _ { Error `Malformed }
 
 and string buf = parse
-  | '\\' ([ '\\' '\'' '\"' 'n' 't' 'b' 'r' ' ' ] as chr)
+  | '\\' ([ '\\' '\'' '\"' 'n' 't' 'b' 'r' ' ' '^' ] as chr)
       { add_escaped_char lexbuf buf (char_for_backslash chr)
       ; string buf lexbuf }
   | '\\' [ '0'-'7' ] [ '0'-'7' ] [ '0'-'7' ]

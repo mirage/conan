@@ -1,5 +1,4 @@
-let () = Printexc.record_backtrace true
-
+open Conan
 open Sigs
 
 module Make (S : sig type +'a t end) = struct
@@ -17,13 +16,13 @@ let unix =
   { bind= (fun x f -> f (prj x))
   ; return= (fun x -> inj x) }
 
-let lseek fd offset where = match where with
+let seek fd offset where = match where with
   | SET -> Unix.lseek fd (Int64.to_int offset) Unix.SEEK_SET
   | CUR -> Unix.lseek fd (Int64.to_int offset) Unix.SEEK_CUR
   | END -> Unix.lseek fd (Int64.to_int offset) Unix.SEEK_END
 
 let seek fd offset where =
-  try let ret = lseek fd offset where in
+  try let ret = seek fd offset where in
     assert (ret = Int64.to_int offset) ;
     Unix_scheduler.inj (Ok ())
   with uerror -> Unix_scheduler.inj (Error uerror)
@@ -84,39 +83,57 @@ let syscall =
 let exit_success = 0
 let exit_failure = 1
 
-let pp_list pp_val ppf lst =
-  let rec go = function
-    | [] -> ()
-    | [ x ] -> Format.fprintf ppf "%a" pp_val x
-    | x :: r ->
-      Format.fprintf ppf "%a;@ " pp_val x ; go r in
-  go lst
-
-let pp_list pp_val ppf lst =
-  Format.fprintf ppf "[@[<hov>%a@]]" (pp_list pp_val) lst
-
 let ( >>= ) x f = match x with
   | Ok x -> f x
   | Error err -> Error err
 
-let process description filename =
-  let desc = open_in description in
-  let rec go count tree = match input_line desc with
-    | line ->
-      Parse.parse_line line >>= fun pline ->
-      let tree = Tree.append tree pline in
-      go (succ count) tree
-    | exception End_of_file -> Ok tree in
-  match go 0 Tree.Done with
-  | Error _ -> exit exit_failure
-  | Ok tree ->
-    let db = Hashtbl.create 0x10 in
-    Process.fill_db db tree ;
-    let fd = Unix.openfile filename Unix.[ O_RDONLY ] 0o644 in
-    match Unix_scheduler.prj (Process.descending_walk ~db unix syscall fd tree) with
-    | results ->
-      Format.printf "%a\n%!" (pp_list Metadata.pp) results
+type fmt = [ `MIME | `Usual ]
 
-let () = match Sys.argv with
-  | [| _; description; filename; |] -> process description filename
-  | _ -> Format.eprintf "%s description filename\n%!" Sys.argv.(0)
+let parse ic = Parse.parse_in_channel ic
+
+let run ?(fmt= `Usual) filename description =
+  let desc = open_in description in
+  parse desc >>= fun lst ->
+  let tree = List.fold_left Tree.append Tree.Done lst in
+  let db = Hashtbl.create 0x10 in
+  Process.fill_db db tree ;
+  let fd = Unix.openfile filename Unix.[ O_RDONLY ] 0o644 in
+  let result =
+    Unix_scheduler.prj (Process.descending_walk ~db unix syscall fd tree) in
+  match fmt with
+  | `Usual -> Format.printf "%s:%s\n%!" filename (Metadata.output result) ; Ok ()
+  | `MIME -> match Metadata.mime result with
+    | None -> Error `Not_found
+    | Some mime -> Format.printf "%s\n%!" mime ; Ok ()
+
+let pp_error ppf = function
+  | #Parse.error as err -> Parse.pp_error ppf err
+  | `Not_found -> Format.fprintf ppf "Not found"
+
+let mime = ref false
+let filename = ref None
+let description = ref None
+
+let anonymous_argument v = match !filename, !description with
+  | None, _ -> filename := Some v
+  | Some _, None -> description := Some v
+  | Some _, Some _ -> ()
+
+let usage = Format.asprintf "%s [--mime] filename description\n%!" Sys.argv.(0)
+
+let spec =
+  [ "--mime", Arg.Set mime, "Causes the file command to output mime type strings \
+                             rather than the more traditional human readable ones. \
+                             Thus it may say 'text/plain; charset=ascii' rather than \
+                             'ASCII text'" ]
+
+let () =
+  Arg.parse spec anonymous_argument usage ;
+  match !filename, !description with
+  | None, None | Some _, None | None, Some _ ->
+    Format.eprintf "%s" usage ; exit exit_failure
+  | Some filename, Some description ->
+    let fmt = if !mime then `MIME else `Usual in
+    match run ~fmt filename description with
+    | Ok () -> exit exit_success
+    | Error err -> Format.eprintf "%s: %a.\n%!" Sys.argv.(0) pp_error err

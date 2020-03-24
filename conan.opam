@@ -1,0 +1,20 @@
+opam-version: "2.0"
+name:         "conan"
+maintainer:   "Romain Calascibetta <romain.calascibetta@gmail.com>"
+authors:      "Romain Calascibetta <romain.calascibetta@gmail.com>"
+homepage:     "https://github.com/dinosaure/conan"
+bug-reports:  "https://github.com/dinosaure/conan/issues"
+dev-repo:     "git+https://github.com/dinosaure/conan.git"
+doc:          "https://dinosaure.github.io/conan/"
+license:      "MIT"
+synopsis:     "Identity type of your file (such as the MIME type)"
+description: """Conan is a re-implementation in OCaml of the file command.
+The library is system-agnostic and can be used with MirageOS."""
+
+build: [ "dune" "build" "-p" name "-j" jobs ]
+run-test: [ "dune" "runtest" "-p" name "-j" jobs ]
+
+depends: [
+  "ocaml"       {>= "4.07.0"}
+  "re"          {>= "1.9.0"}
+]

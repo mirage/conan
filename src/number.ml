@@ -34,11 +34,8 @@ let to_byte = function
   | Int v -> Char.chr (Int64.to_int v land 0xff)
   | Float v -> Char.chr (Float.to_int v land 0xff)
 
-type s = Astring.String.Sub.t
-
-open Astring.String.Sub
-
 let parse s =
+  let open Sub in
   let v = to_string s in
   let lexbuf = Lexing.from_string v in
   if is_empty s

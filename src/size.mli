@@ -27,6 +27,11 @@ val pp : Format.formatter -> t -> unit
 
 open Sigs
 
+val invert
+  :  's scheduler
+  -> ('fd, 'error, 's) syscall
+  -> ('fd, 'error, 's) syscall
+
 val read
   :  's scheduler
   -> ('fd, 'error, 's) syscall

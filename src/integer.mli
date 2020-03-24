@@ -27,8 +27,6 @@ val different : 'a t -> 'a -> 'a -> bool
 
 val zero : 'a t -> 'a
 
-open Astring.String.Sub
-
-val parse : t -> (int64 * t,
+val parse : Sub.t -> (int64 * Sub.t,
                   [> `Empty
                   |  `Invalid_integer of string ]) result

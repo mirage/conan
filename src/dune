@@ -1,5 +1,6 @@
-(executable
- (name magic)
- (libraries unix re astring))
+(library
+ (name conan)
+ (public_name conan)
+ (libraries re))
 
 (ocamllex lexer)

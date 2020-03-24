@@ -1,4 +1,4 @@
-type s = Astring.String.Sub.t
+type s = Sub.t
 
 type numeric =
   [ `Byte | `Short | `Long | `Quad
@@ -37,7 +37,7 @@ type line =
   | `Rule of rule
   | `Name of offset * string
   | `Guid of offset * string
-  | `Use of offset * string ]
+  | `Use of offset * bool * string ]
 
 type error =
   [ `Empty
@@ -49,8 +49,9 @@ type error =
   | `Invalid_strength
   | `Invalid_type of s
   | `No_prefix of (s * s)
-  | `Unsupported_type ]
+  | `Unsupported_type
+  | `Invalid_use_command ]
 
 val pp_error : Format.formatter -> error -> unit
 val parse_line : string -> (line, error) result
-val parse_in_channel : in_channel -> (line list, error) result
+val parse_in_channel : in_channel -> (line list, [> error ]) result

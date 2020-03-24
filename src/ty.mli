@@ -60,8 +60,8 @@ val search
   -> pattern:string
   -> (string, string) t
 
-val with_range : (string, string) t -> int64 -> (string, string) t
-val with_pattern : (string, string) t -> string -> (string, string) t
+val with_range : int64 -> (string, string) t -> (string, string) t
+val with_pattern : string -> (string, string) t -> (string, string) t
 
 val unicode : [ `BE | `LE ] -> (Uchar.t, string) t
 

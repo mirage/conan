@@ -60,6 +60,18 @@ external swap16 : int -> int = "%bswap16"
 external swap32 : int32 -> int32 = "%bswap_int32"
 external swap64 : int64 -> int64 = "%bswap_int64"
 
+let invert { bind; return; } syscall =
+  let ( >>= ) = bind in
+  let ( >|= ) x f = x >>= function
+    | Ok x -> return (Ok (f x))
+    | Error err -> return (Error err) in
+  let read_int16_ne fd = syscall.read_int16_ne fd >|= swap16 in
+  let read_int32_ne fd = syscall.read_int32_ne fd >|= swap32 in
+  let read_int64_ne fd = syscall.read_int64_ne fd >|= swap64 in
+  { syscall with read_int16_ne
+               ; read_int32_ne
+               ; read_int64_ne }
+
 let read
   :  type s fd error.
      s scheduler -> (fd, error, s) syscall

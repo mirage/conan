@@ -162,11 +162,11 @@ let search
          ; range
          ; pattern }
 
-let with_range t range = match t with
+let with_range range = function
   | Search v -> Search { v with range }
   | t -> t
 
-let with_pattern t pattern = match t with
+let with_pattern pattern = function
   | Search v -> Search { v with pattern }
   | t -> t
 
@@ -336,4 +336,3 @@ let process
       reword_error (fun err -> `Syscall err) >?= fun v ->
       (return <.> ok) (Arithmetic.process_float v c)
     | _ -> assert false
-

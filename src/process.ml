@@ -37,6 +37,7 @@ let process
   = fun ({ bind; return; } as scheduler) syscall fd abs_offset metadata -> function
     | Tree.Name _ -> return (Error `No_process)
     | Tree.Use _ -> return (Error `No_process)
+    | Tree.MIME v -> return (Ok (abs_offset, Metadata.with_mime v metadata))
     | Tree.Rule (offset, ty, test, fmt) ->
       let ( >>= ) = bind in
       let ( >|= ) x f = x >>= fun x -> return (f x) in
@@ -68,13 +69,24 @@ let descending_walk
       | [] -> return candidate1
       | (Tree.Name _, _) :: rest ->
         iter ~level results syscall abs_offset candidate1 rest
-      | (Tree.Use (offset, name), Tree.Done) :: rest ->
+      | (Tree.Use { offset; invert= false; name; }, Tree.Done) :: rest ->
         ( Offset.process scheduler syscall fd offset abs_offset >>= function
             | Ok shift ->
               let seek fd abs_offset where =
                 syscall.seek fd (Int64.add abs_offset shift) where in
+              if not (Hashtbl.mem db name) then invalid_arg "%s does not exist" name ;
               let tree = Hashtbl.find db name in
               go { syscall with seek } ~level:(succ level) 0L (* XXX(dinosaure): or [abs_offset]? *) candidate1 tree
+            | Error _ -> iter ~level results syscall abs_offset candidate1 rest )
+      | (Tree.Use { offset; invert= true; name; }, Tree.Done) :: rest ->
+        ( Offset.process scheduler syscall fd offset abs_offset >>= function
+            | Ok shift ->
+              let seek fd abs_offset where =
+                syscall.seek fd (Int64.add abs_offset shift) where in
+              if not (Hashtbl.mem db name) then invalid_arg "%s does not exist" name ;
+              let tree = Hashtbl.find db name in
+              go (Size.invert scheduler { syscall with seek })
+                ~level:(succ level) 0L (* XXX(dinosaure): or [abs_offset]? *) candidate1 tree
             | Error _ -> iter ~level results syscall abs_offset candidate1 rest )
       | (Tree.Rule (offset, Ty.Indirect `Rel, _, _), Tree.Done) :: rest ->
         ( Offset.process scheduler syscall fd offset abs_offset >>= function
@@ -104,11 +116,8 @@ let descending_walk
           iter ~level results syscall abs_offset candidate1 rest in
     go ~level:0 syscall abs_offset metadata root
 
-let descending_walk ?(db= Hashtbl.create 0x10) ({ bind; return; } as scheduler) syscall fd tree =
-  let ( >>= ) = bind in
-  let ( >|= ) x f = x >>= fun x -> return (f x) in
-  descending_walk scheduler syscall db fd 0L Metadata.empty tree >|= fun metadata ->
-  [ metadata ]
+let descending_walk ?(db= Hashtbl.create 0x10) scheduler syscall fd tree =
+  descending_walk scheduler syscall db fd 0L Metadata.empty tree
 
 let fill_db db = function
   | Tree.Done -> ()
@@ -134,7 +143,7 @@ let rec ascending_walk
         | [] -> return ()
         | (Tree.Name (_, name), tree) :: rest ->
           Hashtbl.add db name tree ; go candidate rest
-        | (Tree.Use (_, name), _) :: rest ->
+        | (Tree.Use { name; _ }, Tree.Done) :: rest ->
           let tree = Hashtbl.find db name in
           Queue.push (abs_offset, candidate, tree) queue ; go candidate rest
         | (operation, tree) :: rest ->

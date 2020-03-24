@@ -3,13 +3,13 @@ let invalid_arg fmt = Format.kasprintf invalid_arg fmt
 
 let pf = Format.fprintf
 
-type 'a fmt =
-  { fmt : 'r. unit -> ('a -> 'r, 'r) Fmt.fmt }
+type 'a fmt = { fmt : 'r. unit -> ('a -> 'r, 'r) Fmt.fmt }
 
 type operation =
   | Rule : Offset.t * ('test, 'v) Ty.t * 'test Test.t * 'v fmt -> operation
   | Name : Offset.t * string -> operation
-  | Use : Offset.t * string -> operation
+  | Use : { offset: Offset.t; invert : bool; name : string; }-> operation
+  | MIME : string -> operation
 
 let pp_operation ppf = function
   | Rule (offset, ty, test, _) ->
@@ -17,8 +17,11 @@ let pp_operation ppf = function
       Offset.pp offset Ty.pp ty Test.pp test
   | Name (offset, name) ->
     pf ppf "%a\t%s" Offset.pp offset name
-  | Use (offset, name) ->
+  | Use { offset; invert= false; name; } ->
     pf ppf "%a\t%s" Offset.pp offset name
+  | Use { offset; invert= true; name; } ->
+    pf ppf "\\^%a\t%s" Offset.pp offset name
+  | MIME v -> pf ppf "!:mime %s" v
 
 type tree =
   | Node of (operation * tree) list
@@ -84,10 +87,10 @@ let calculation
   | None -> Arithmetic.add (f 0L)
   | Some c -> Arithmetic.map ~f c
 
-let percent = Astring.String.Sub.v "%"
+let percent = Sub.v "%"
 
 let rec force_to_use_any_formatter s =
-  let open Astring.String.Sub in
+  let open Sub in
   match cut ~sep:percent s with
   | None -> None
   | Some (x, r) ->
@@ -145,7 +148,7 @@ let format_of_ty
       | Pascal_string ->
         with_space (Fmt.of_string ~any message Fmt.(String End))
       | Indirect _ -> assert false (* TODO *)
-    with _ -> match force_to_use_any_formatter (Astring.String.Sub.v message) with
+    with _ -> match force_to_use_any_formatter (Sub.v message) with
       | Some message1 ->
         let key = key_of_ty message ty in
         with_space (Fmt.of_string message1 ~any:key Fmt.(Any (key, End)))
@@ -275,7 +278,7 @@ let rule
       | String c, Search { range; _ } ->
         let pattern = Comparison.value c in
         let range = max range ((Int64.of_int <.> String.length) pattern) in
-        Rule (offset, Ty.with_range (Ty.with_pattern ty pattern) range,
+        Rule (offset, (Ty.with_range range <.> Ty.with_pattern pattern) ty,
               test, { fmt= fun () -> format_of_ty ty message })
       | Length _, Search _ ->
         Rule (offset, ty, test, { fmt= fun () -> format_of_ty ty message })
@@ -303,30 +306,43 @@ let name
 
 let use
   : _ -> operation
-  = fun ((_level, o), name) ->
+  = fun ((_level, o), invert, name) ->
   let offset = offset o in
-  Use (offset, name)
+  Use { offset; invert; name; }
 
-let operation = function
+let mime
+  : _ -> operation
+  = fun v -> MIME v
+
+exception Not_implemented
+
+let operation ~max = function
   | `Rule (((level, _), _, _, _) as v) ->
     let rule = rule v in
     level, rule
   | `Name (((level, _), _) as v) ->
     let name = name v in
     level, name
-  | `Use (((level, _), _) as v) ->
+  | `Use (((level, _), _, _) as v) ->
     let use = use v in
     level, use
-  | _ -> assert false (* TODO *)
+  | `Mime v -> max, mime v
+  | _ -> raise Not_implemented
 
 let rec left = function
   | Done | Node [] -> 0
   | Node ((_, hd) :: _) ->
     1 + left hd
 
+let rec depth_left = function
+  | Done | Node [] -> 0
+  | Node ((_, hd) :: _) ->
+    1 + depth_left hd
+
 let append tree (line : Parse.line) = match line with
-  | `Rule _ | `Name _ | `Use _ ->
-    let level, operation = operation line in
+  | `Rule _ | `Name _ | `Use _ | `Mime _ ->
+    let max = depth_left tree in
+    let level, operation = operation ~max line in
     if level <= left tree
     then
       let rec go cur tree =

@@ -1,6 +1,12 @@
 (* XXX(dinosaure): anyone can say that this parser is a sh*t and he is true. *)
 
-type s = Astring.String.Sub.t
+type s = Sub.t
+
+let string_head s =
+  if String.length s > 0 then Some s.[0] else None
+
+let string_tail s =
+  if String.length s > 0 then String.sub s 1 (String.length s - 1) else ""
 
 let ( >>= ) x f = match x with
   | Ok x -> f x
@@ -12,7 +18,7 @@ let ( >|= ) x f = match x with
 
 let ( <.> ) f g = fun x -> f (g x)
 
-open Astring.String.Sub
+open Sub
 
 let is_wsp = function ' ' | '\t' .. '\r' -> true | _ -> false
 
@@ -327,6 +333,17 @@ let parse_strength s =
     else Error (`Unexpected_trailer empty)
   else Error `Invalid_strength
 
+let parse_use offset s =
+  let buf = Buffer.create 16 in
+  let lexbuf = Lexing.from_string (to_string s) in
+  let name = Lexer.string buf lexbuf in
+  let empty = with_range ~first:(Lexing.lexeme_end lexbuf) s in
+  if name <> "" && is_empty empty
+  then match string_head name with
+    | Some '^' -> Ok (`Use (offset, true, (string_tail name)))
+    | _ -> Ok (`Use (offset, false, name))
+  else Error `Invalid_use_command
+
 let hws = v "\t"
 let wsp = v " "
 
@@ -362,7 +379,7 @@ type line =
   | `Rule of rule
   | `Name of offset * string
   | `Guid of offset * string
-  | `Use of offset * string ]
+  | `Use of offset * bool * string ]
 
 (* TODO(dinosaure): we should clear semantic of this function:
    "x\t" returns ("x", [])
@@ -387,10 +404,11 @@ type error =
   | `Invalid_strength
   | `Invalid_type of s
   | `No_prefix of (s * s)
-  | `Unsupported_type ]
+  | `Unsupported_type
+  | `Invalid_use_command ]
 
-let parse_line line : (line, error) result =
-  match Astring.String.head line with
+let parse_line line : (line, [> error ]) result =
+  match string_head line with
   | None | Some '#' -> Ok `Comment
   | _ ->
     let s = v line in
@@ -411,7 +429,7 @@ let parse_line line : (line, error) result =
       match to_string ty with
       | "name" -> Ok (`Name (offset, to_string s))
       | "guid" -> Ok (`Guid (offset, to_string s))
-      | "use" -> Ok (`Use (offset, to_string s))
+      | "use" -> parse_use offset (trim ~drop:is_wsp s)
       | _ ->
         parse_type ty >>= fun ty ->
         best_effort s >>= fun (test, message) ->
@@ -421,7 +439,7 @@ let parse_line line : (line, error) result =
 
 let pp_error ppf err =
   let pp = Format.fprintf in
-  let to_string = Astring.String.Sub.to_string in
+  let to_string = Sub.to_string in
 
   match err with
   | `Invalid_number s -> pp ppf "Invalid number %S" (to_string s)
@@ -438,6 +456,7 @@ let pp_error ppf err =
   | `Missing_test s ->
     pp ppf "Missing test %S" (to_string s)
   | `Empty -> pp ppf "Empty string"
+  | `Invalid_use_command -> pp ppf "Invalid #use command"
 
 let parse_in_channel ic =
   let rec go acc = match input_line ic with

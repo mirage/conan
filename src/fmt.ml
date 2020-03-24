@@ -365,7 +365,7 @@ let is_dash = function '-' -> true | _ -> false
 let is_zero = function '0' -> true | _ -> false
 let is_digit = function '0'..'9' -> true | _ -> false
 
-type s = Astring.String.Sub.t
+type s = Sub.t
 type 'r ebb = Ebb : ('x, 'r) fmt -> 'r ebb
 
 type ('x, 'r) prebb = PrEbb : (_, 'x -> 'a) precision * ('a, 'r) fmt -> ('x, 'r) prebb
@@ -390,7 +390,7 @@ let make_pdprebb
 let rec parse_precision
   : type x v r. any:x Hmap.key -> (v, _) padding -> s -> r ebb
   = fun ~any padding s ->
-  let open Astring.String.Sub in
+  let open Sub in
   let dot = v "." in
   if is_prefix ~affix:dot s
   then let precision, s = span ~sat:is_digit (tail s) in
@@ -402,7 +402,7 @@ let rec parse_precision
 and parse_padding
   : type x r. any:x Hmap.key -> s -> r ebb
   = fun ~any s ->
-  let open Astring.String.Sub in
+  let open Sub in
   let flags, s = span ~sat:is_flag s in
   let left_padding = exists is_dash flags in
   let zero_padding = exists is_zero flags in
@@ -419,7 +419,7 @@ and parse_padding
 and parse_flag
   : type x a b c d r. any:x Hmap.key -> (a, b) padding -> (c, d) precision -> s -> r ebb
   = fun ~any padding precision s ->
-  let open Astring.String.Sub in
+  let open Sub in
   match head s with
   | None -> invalid_arg "Invalid format: %S" (to_string s)
   | Some '%' ->
@@ -443,7 +443,7 @@ and parse_flag
   | Some chr -> invalid_arg "Invalid formatter %c" chr
 
 and go : type x r. any:x Hmap.key -> s -> r ebb = fun ~any s ->
-  let open Astring.String.Sub in
+  let open Sub in
   let percent = v "%" in
   match cut ~sep:percent s with
   | None ->
@@ -458,8 +458,8 @@ and go : type x r. any:x Hmap.key -> s -> r ebb = fun ~any s ->
     else parse_padding ~any s
 
 and parse ~any fmt =
-  let open Astring.String.Sub in
-  go ~any (of_string fmt)
+  let open Sub in
+  go ~any (v fmt)
 
 let coerce
   : type v0 r0 v1 r1. (v0, r0) fmt -> (v1, r1) ty -> (v1, r1) fmt

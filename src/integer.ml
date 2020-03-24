@@ -95,7 +95,7 @@ let zero : type w. w t -> w = function
   | Int32 -> Int32.zero
   | Int64 -> Int64.zero
 
-open Astring.String.Sub
+open Sub
 
 let parse s =
   let v = to_string s in
