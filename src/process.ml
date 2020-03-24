@@ -1,5 +1,3 @@
-[@@@warning "-27"]
-
 let invalid_arg fmt = Format.kasprintf invalid_arg fmt
 
 let ( <.> ) f g = fun x -> f (g x)
@@ -33,12 +31,21 @@ let pp_metadata ppf metadata =
     (pp_option pp_string) metadata.mime
     metadata.output
 
-type error = [ `Invalid_test ]
+let pps =
+  let open Fmt.Hmap in
+  empty
+  |> add Tree.key_byte Fmt.pp_char
+  |> add Tree.key_short Fmt.pp_int
+  |> add Tree.key_long Fmt.pp_int32
+  |> add Tree.key_quad Fmt.pp_int64
 
 let process_fmt
   : type v. metadata -> (_, v) Ty.t -> v Tree.fmt -> v -> metadata
-  = fun metadata ty { Tree.fmt } v ->
-    Format.kasprintf (fun output -> { metadata with output }) ("%s" ^^ (fmt ()))
+  = fun metadata _ { Tree.fmt } v ->
+    let buf = Buffer.create 16 in
+    let ppf = Format.formatter_of_buffer buf in
+    Fmt.keval pps ppf Fmt.([ String Nop ] ^^ (fmt ()))
+      (fun ppf -> Format.fprintf ppf "%!" ; { metadata with output= Buffer.contents buf })
       metadata.output v
 
 let process
@@ -75,51 +82,55 @@ let descending_walk
   = fun ({ bind; return; } as scheduler) syscall db fd abs_offset metadata root ->
     let ( >>= ) = bind in
 
+    (* ugly, as f*ck! *)
+
     let rec go ~level syscall abs_offset candidate0 = function
       | Tree.Done -> return candidate0
       | Tree.Node lst ->
         let lst = List.rev lst in
-        iter ~level ~default:true candidate0 lst
-    and iter ~level ~default candidate1 = function
+        iter ~level [] syscall abs_offset candidate0 lst
+    and iter ~level results syscall abs_offset candidate1 = function
       | [] -> return candidate1
-      | (Tree.Name (_, name), tree) :: rest ->
-        iter ~level ~default candidate1 rest
+      | (Tree.Name _, _) :: rest ->
+        iter ~level results syscall abs_offset candidate1 rest
       | (Tree.Use (offset, name), Tree.Done) :: rest ->
         ( Offset.process scheduler syscall fd offset abs_offset >>= function
             | Ok shift ->
+              Format.eprintf "[+] use %S (offset: %Ld).\n%!" name shift ;
               let seek fd abs_offset where =
                 syscall.seek fd (Int64.add abs_offset shift) where in
               let tree = Hashtbl.find db name in
-              go { syscall with seek } ~level:(succ level) abs_offset candidate1 tree
-            | Error _ -> iter ~level ~default candidate1 rest )
+              go { syscall with seek } ~level:(succ level) 0L (* XXX(dinosaure): or [abs_offset]? *) candidate1 tree
+            | Error _ -> iter ~level results syscall abs_offset candidate1 rest )
       | (Tree.Rule (offset, Ty.Indirect `Rel, _, _), Tree.Done) :: rest ->
         ( Offset.process scheduler syscall fd offset abs_offset >>= function
             | Ok shift ->
               let seek fd abs_offset where =
                 syscall.seek fd (Int64.add abs_offset shift) where in
-              go { syscall with seek } ~level:(succ level) abs_offset candidate1 root
-            | Error _ -> iter ~level ~default candidate1 rest )
+              go { syscall with seek } ~level:(succ level) abs_offset candidate1 root >>= fun candidate1 ->
+              iter ~level (candidate1 :: results) syscall abs_offset candidate1 rest
+            | Error _ -> iter ~level results syscall abs_offset candidate1 rest )
       | (Tree.Rule (_, Ty.Default, _, _) as operation, tree) :: rest ->
-        if default
-        then
-          process scheduler syscall fd abs_offset candidate1 operation >>= function
-          | Ok (abs_offset, candidate2) ->
-            go syscall ~level:(succ level) abs_offset candidate2 tree >>= fun candidate3 ->
-            iter ~level ~default candidate3 rest
-          | Error _ -> iter ~level ~default candidate1 rest
-        else iter ~level ~default candidate1 rest
-      | (Tree.Rule (_, Ty.Clear, _, _) as _operation, tree) :: rest ->
-        iter ~level ~default:true candidate1 rest (* TODO: compute [operation]? *)
+        ( match results with
+          | _ :: _ -> iter ~level results syscall abs_offset candidate1 rest
+          | [] ->
+            process scheduler syscall fd abs_offset candidate1 operation >>= function
+            | Ok (abs_offset, candidate2) ->
+              go syscall ~level:(succ level) abs_offset candidate2 tree >>= fun candidate3 ->
+              iter ~level (candidate3 :: results) syscall abs_offset candidate3 rest
+            | Error _ -> iter ~level [] syscall abs_offset candidate1 rest )
+      | (Tree.Rule (_, Ty.Clear, _, _) as _operation, _) :: rest ->
+        iter ~level [] syscall abs_offset candidate1 rest (* TODO: compute [operation]? *)
       | (operation, tree) :: rest ->
         Format.eprintf "[-] process %s%a %!" (String.make level '>') Tree.pp_operation operation ;
         process scheduler syscall fd abs_offset candidate1 operation >>= function
-        | Ok (abs_offset, candidate) ->
+        | Ok (abs_offset, candidate1) ->
           Format.eprintf "[ok].\n%!" ;
-          go syscall ~level:(succ level) abs_offset candidate tree >>= fun candidate ->
-          iter ~level ~default:false candidate1 rest
+          go syscall ~level:(succ level) abs_offset candidate1 tree >>= fun candidate2 ->
+          iter ~level (candidate2 :: results) syscall abs_offset candidate2 rest
         | Error _ ->
           Format.eprintf "[error].\n%!" ;
-          iter ~level ~default candidate1 rest in
+          iter ~level results syscall abs_offset candidate1 rest in
     go ~level:0 syscall abs_offset metadata root
 
 let descending_walk ?(db= Hashtbl.create 0x10) ({ bind; return; } as scheduler) syscall fd tree =
@@ -163,7 +174,7 @@ let rec ascending_walk
           | Ok (abs_offset, candidate) ->
             Format.eprintf "[ok].\n%!" ;
             Queue.push (abs_offset, candidate, tree) queue ; go candidate rest
-          | Error err ->
+          | Error _ ->
             Format.eprintf "[error].\n%!" ;
             go candidate rest in
       go candidate lst >>= fun () -> ascending_walk scheduler syscall db fd results queue

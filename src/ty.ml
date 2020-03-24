@@ -252,6 +252,7 @@ let process
     match ty with
     | Default -> (return <.> ok) (Default : default)
     | Clear   -> (return <.> ok) (Clear : clear)
+    | Search { pattern= ""; _ } -> (return <.> ok) ""
     | Search { pattern
              ; compact_whitespaces= _
              ; optional_blank= _

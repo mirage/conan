@@ -4,11 +4,7 @@ let invalid_arg fmt = Format.kasprintf invalid_arg fmt
 let pf = Format.fprintf
 
 type 'a fmt =
-  { fmt : 'r. unit -> ('a -> 'r, Format.formatter, unit, 'r) format4 }
-
-let pp_fmt ppf v =
-  let CamlinternalFormatBasics.Format (_, v) = v in
-  pf ppf "%s" v
+  { fmt : 'r. unit -> ('a -> 'r, 'r) Fmt.fmt }
 
 type operation =
   | Rule : Offset.t * ('test, 'v) Ty.t * 'test Test.t * 'v fmt -> operation
@@ -16,9 +12,9 @@ type operation =
   | Use : Offset.t * string -> operation
 
 let pp_operation ppf = function
-  | Rule (offset, kind, test, fmt) ->
-    pf ppf "%a\t%a\t%a\t%a"
-      Offset.pp offset Ty.pp kind Test.pp test pp_fmt (fmt.fmt ())
+  | Rule (offset, ty, test, _) ->
+    pf ppf "%a\t%a\t%a\t#fmt"
+      Offset.pp offset Ty.pp ty Test.pp test
   | Name (offset, name) ->
     pf ppf "%a\t%s" Offset.pp offset name
   | Use (offset, name) ->
@@ -75,7 +71,7 @@ let offset = function
   | `Rel offset -> Offset.(Relative (Value offset))
   | `Ind ind -> indirect_0 ind
 
-type k = Kind : ('test, 'v) Ty.t -> k
+type k = Ty : ('test, 'v) Ty.t -> k
 type t = Test : 'test Test.t -> t
 type f = Format : 'v fmt -> f
 
@@ -88,104 +84,102 @@ let calculation
   | None -> Arithmetic.add (f 0L)
   | Some c -> Arithmetic.map ~f c
 
-let force_to_use_string_formatter message =
-  match Astring.String.cut ~sep:"%" message with
+let percent = Astring.String.Sub.v "%"
+
+let rec force_to_use_any_formatter s =
+  let open Astring.String.Sub in
+  match cut ~sep:percent s with
   | None -> None
   | Some (x, r) ->
-    if r = "" then None
-    else match r.[0] with
-      | _ ->
-        let r = Bytes.of_string r in
-        Bytes.set r 0 's' ; Some (x ^ "%" ^ (Bytes.to_string r))
+    match head r with
+    | None -> None
+    | Some '%' ->
+      ( match force_to_use_any_formatter (tail r) with
+        | None -> None
+        | Some r -> Some (to_string x ^ "%%" ^ r) )
+    | _ ->
+      let flags, r = span ~sat:Fmt.is_flag r in
+      let r = tail r in
+      Some (to_string x ^ to_string flags ^ "%!" ^ to_string r)
 
-let prepend_percent message =
-  match Astring.String.cut ~sep:"%" message with
-  | None -> message
-  | Some (a, b) ->
-    a ^ "%%" ^ b
+let key_byte : char Fmt.Hmap.Key.key = Fmt.Hmap.Key.create ()
+let key_short : int Fmt.Hmap.Key.key = Fmt.Hmap.Key.create ()
+let key_long : int32 Fmt.Hmap.Key.key = Fmt.Hmap.Key.create ()
+let key_quad : int64 Fmt.Hmap.Key.key = Fmt.Hmap.Key.create ()
+let key_uchar : Uchar.t Fmt.Hmap.Key.key = Fmt.Hmap.Key.create ()
 
-let format_of_kind
-  : type test v. (test, v) Ty.t -> _ -> (v -> 'r, _, _, 'r) format4
+let key_of_ty
+  : type test v. string -> (test, v) Ty.t -> v Fmt.Hmap.Key.key
+  = fun message ty0 ->
+    let any = Fmt.Hmap.Key.create () in
+    let Fmt.Ty ty1 = Fmt.ty_of_string ~any message in
+    match ty0, ty1 with
+    | Byte _, Int End -> key_byte
+    | Short _, _      -> key_short
+    | Long _, _       -> key_long
+    | Quad _, _       -> key_quad
+    | _ ->
+      invalid_arg "Impossible to convert %a to %a on %S" Ty.pp ty0 Fmt.pp_ty ty1 message
+
+let format_of_ty
+  : type test v. (test, v) Ty.t -> _ -> (v -> 'r, 'r) Fmt.fmt
   = fun ty message ->
-    let (prefix : _ format4), message = match message with
-      | `No_space m -> "%,", m | `Space m -> if m <> "" then " ", m else "", m in
-    try match ty with
+    let with_space, message = match message with
+      | `No_space message -> false, message
+      | `Space "" -> false, ""
+      | `Space message -> true, message in
+    let with_space fmt =
+      if not with_space
+      then fmt else Fmt.((pp_string $ " ") :: fmt) in
+    let any = Fmt.Hmap.Key.create () in
+    try
+      match ty with
       | Default ->
-        let open CamlinternalFormatBasics in
-        let Format (fmt, str) = Scanf.format_from_string message "%," in
-        let fmt
-          : (Ty.default -> 'r, _, _, 'r) format4
-          = Format (Custom (Custom_succ Custom_zero,
-                            (fun () Default -> ""), fmt), str) in
-        prefix ^^ fmt
+        let fmt = Fmt.of_string ~any message Fmt.End in
+        with_space Fmt.([ ignore ] ^^ fmt)
       | Clear ->
-        let open CamlinternalFormatBasics in
-        let Format (fmt, str) = Scanf.format_from_string message "%," in
-        let fmt
-          : (Ty.clear -> 'r, _, _, 'r) format4
-          = Format (Custom (Custom_succ Custom_zero,
-                            (fun () Clear -> ""), fmt), str) in
-        prefix ^^ fmt
-      | Byte _ ->
-        prefix ^^ (Scanf.format_from_string message "%c")
-      | Search _ ->
-        prefix ^^ (Scanf.format_from_string message "%s")
-      | Unicode _ ->
-        prefix ^^ (Scanf.format_from_string message "%s")
-      | Short _ ->
-        prefix ^^ (Scanf.format_from_string message "%d")
-      | Long _ ->
-        prefix ^^ (Scanf.format_from_string message "%ld")
-      | Quad _ ->
-        prefix ^^ (Scanf.format_from_string message "%Ld")
-      | Float _ ->
-        prefix ^^ (Scanf.format_from_string message "%f")
-      | Double _ ->
-        prefix ^^ (Scanf.format_from_string message "%f")
-      | Regex _ ->
-        prefix ^^ (Scanf.format_from_string message "%s")
+        let fmt = Fmt.of_string ~any message Fmt.End in
+        with_space Fmt.([ ignore ] ^^ fmt)
+      | Byte _    -> with_space (Fmt.of_string ~any message Fmt.(Char End))
+      | Search _  -> with_space (Fmt.of_string ~any message Fmt.(String End))
+      | Unicode _ -> with_space (Fmt.of_string ~any message Fmt.(String End))
+      | Short _   -> with_space (Fmt.of_string ~any message Fmt.(Int End))
+      | Long _    -> with_space (Fmt.of_string ~any message Fmt.(Int32 End))
+      | Quad _    -> with_space (Fmt.of_string ~any message Fmt.(Int64 End))
+      | Float _   -> with_space (Fmt.of_string ~any message Fmt.(Float End))
+      | Double _  -> with_space (Fmt.of_string ~any message Fmt.(Float End))
+      | Regex _   -> with_space (Fmt.of_string ~any message Fmt.(String End))
       | Pascal_string ->
-        prefix ^^ (Scanf.format_from_string message "%s")
+        with_space (Fmt.of_string ~any message Fmt.(String End))
       | Indirect _ -> assert false (* TODO *)
-    with _ -> match force_to_use_string_formatter message with
-      | Some message ->
-        let Format (_fmt, _str) = Scanf.format_from_string message "%s" in
-        (* TODO *)
-        let open CamlinternalFormatBasics in
-        let message = prepend_percent message in
-        let Format (fmt, str) = Scanf.format_from_string message "%," in
-        let fmt = Format (Custom (Custom_succ Custom_zero,
-                        (fun () (_ : v) -> ""), fmt), str) in
-        prefix ^^ fmt
-      | None ->
-        let open CamlinternalFormatBasics in
-        let Format (fmt, str) = Scanf.format_from_string message "%," in
-        let fmt = Format (Custom (Custom_succ Custom_zero,
-                        (fun () (_ : v) -> ""), fmt), str) in
-        prefix ^^ fmt
+    with _ -> match force_to_use_any_formatter (Astring.String.Sub.v message) with
+      | Some message1 ->
+        let key = key_of_ty message ty in
+        with_space (Fmt.of_string message1 ~any:key Fmt.(Any (key, End)))
+      | None -> with_space Fmt.([ ignore ] ^^ (of_string ~any message End))
 
 let rule
   : Parse.rule -> operation
   = fun ((_level, o), ty, test, message) ->
   let offset = offset o in
-  let Kind ty = match ty with
-    | _, `Default -> Kind Ty.default
-    | _, `Clear -> Kind Ty.clear
+  let Ty ty = match ty with
+    | _, `Default -> Ty Ty.default
+    | _, `Clear -> Ty Ty.clear
     | _, `Regex (Some (case_insensitive, start, line, limit)) ->
       let kind = if line then `Line else `Byte in
-      Kind (Ty.regex ~case_insensitive ~start ~limit kind)
+      Ty (Ty.regex ~case_insensitive ~start ~limit kind)
     | _, `Regex None ->
-      Kind (Ty.regex `Byte)
+      Ty (Ty.regex `Byte)
     | _, `String16 endian ->
-      Kind (Ty.unicode endian)
+      Ty (Ty.unicode endian)
     | _, `String8 (Some (b, _B, c, _C)) ->
-      Kind (Ty.search
+      Ty (Ty.search
               ~lower_case_insensitive:c
               ~upper_case_insensitive:_C
               (if b || _B then `Binary else `Text)
               0L ~pattern:"")
     | _, `Search None | _, `String8 None ->
-      Kind (Ty.search `Text ~pattern:"" 0L)
+      Ty (Ty.search `Text ~pattern:"" 0L)
     | _, `Search (Some (flags, range)) ->
       let range = Option.value ~default:0L range in
       let lower_case_insensitive = List.exists ((=) `c) flags in
@@ -200,30 +194,30 @@ let rule
       | true, false, false
       | false, true, false -> `Binary
       | _, _, _ -> `Text in
-      Kind (Ty.search ~compact_whitespaces
+      Ty (Ty.search ~compact_whitespaces
               ~optional_blank
               ~lower_case_insensitive
               ~upper_case_insensitive
               ~trim
               kind ~pattern:"" range)
     | _, `Indirect rel ->
-      Kind (Ty.indirect (if rel then `Rel else `Abs))
+      Ty (Ty.indirect (if rel then `Rel else `Abs))
     | unsigned, `Numeric (_endian, `Byte, c) ->
       let cast = Char.chr <.> Int64.to_int in
-      Kind (Ty.numeric ~unsigned Integer.byte (calculation ~cast c))
+      Ty (Ty.numeric ~unsigned Integer.byte (calculation ~cast c))
     | unsigned, `Numeric (Some (`BE | `LE as endian), `Short, c) ->
       let cast = Int64.to_int in
-      Kind (Ty.numeric ~unsigned ~endian Integer.short (calculation ~cast c))
+      Ty (Ty.numeric ~unsigned ~endian Integer.short (calculation ~cast c))
     | unsigned, `Numeric (_, `Short, c) ->
       let cast = Int64.to_int in
-      Kind (Ty.numeric ~unsigned Integer.short (calculation ~cast c))
+      Ty (Ty.numeric ~unsigned Integer.short (calculation ~cast c))
     | unsigned, `Numeric (endian, `Long, c) ->
       let cast = Int64.to_int32 in
-      Kind (Ty.numeric ~unsigned
+      Ty (Ty.numeric ~unsigned
               ?endian:(endian :> Ty.endian option)
               Integer.int32 (calculation ~cast c))
     | unsigned, `Numeric (endian, `Quad, c) ->
-      Kind (Ty.numeric ~unsigned
+      Ty (Ty.numeric ~unsigned
               ?endian:(endian :> Ty.endian option)
            Integer.int64 (calculation ~cast:(fun x -> x) c))
     | _, _ -> assert false in
@@ -276,33 +270,33 @@ let rule
       | Float _, Default
       | Unicode _, Default ->
         Rule (offset, ty, Test.always_true,
-              { fmt= fun () -> format_of_kind ty message })
+              { fmt= fun () -> format_of_ty ty message })
       | True, Clear
       | String _, Clear
       | Numeric _, Clear ->
         Rule (offset, ty, Test.always_true,
-              { fmt= fun () -> format_of_kind ty message })
+              { fmt= fun () -> format_of_ty ty message })
       | Regex c, Regex _ ->
         Rule (offset, ty, Test.regex c,
-              { fmt= fun () -> format_of_kind ty message })
+              { fmt= fun () -> format_of_ty ty message })
       | String c, Search { range; _ } ->
         let pattern = Comparison.value c in
         let range = max range ((Int64.of_int <.> String.length) pattern) in
         Rule (offset, Ty.with_range (Ty.with_pattern ty pattern) range,
-              test, { fmt= fun () -> format_of_kind ty message })
+              test, { fmt= fun () -> format_of_ty ty message })
       | Length _, Search _ ->
-        Rule (offset, ty, test, { fmt= fun () -> format_of_kind ty message })
+        Rule (offset, ty, test, { fmt= fun () -> format_of_ty ty message })
       | Numeric (Byte, _), Byte _ ->
-        Rule (offset, ty, test, { fmt= fun () -> format_of_kind ty message })
+        Rule (offset, ty, test, { fmt= fun () -> format_of_ty ty message })
       | Numeric (Short, _), Short _ ->
-        Rule (offset, ty, test, { fmt= fun () -> format_of_kind ty message })
+        Rule (offset, ty, test, { fmt= fun () -> format_of_ty ty message })
       | Numeric (Int32, _), Long _ ->
-        Rule (offset, ty, test, { fmt= fun () -> format_of_kind ty message })
+        Rule (offset, ty, test, { fmt= fun () -> format_of_ty ty message })
       | Numeric (Int64, _), Quad _ ->
-        Rule (offset, ty, test, { fmt= fun () -> format_of_kind ty message })
+        Rule (offset, ty, test, { fmt= fun () -> format_of_ty ty message })
       | True, _ ->
         Rule (offset, ty, Test.always_true,
-              { fmt= fun () -> format_of_kind ty message })
+              { fmt= fun () -> format_of_ty ty message })
       | test, ty ->
         invalid_arg "Impossible to operate a test (%a) on the given value (%a)"
           Test.pp test Ty.pp ty in
