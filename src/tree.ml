@@ -99,14 +99,9 @@ let rec force_to_use_any_formatter s =
         | Some r -> Some (to_string x ^ "%%" ^ r) )
     | _ ->
       let flags, r = span ~sat:Fmt.is_flag r in
+      let padding, r = span ~sat:Fmt.is_digit r in
       let r = tail r in
-      Some (to_string x ^ to_string flags ^ "%!" ^ to_string r)
-
-let key_byte : char Fmt.Hmap.Key.key = Fmt.Hmap.Key.create ()
-let key_short : int Fmt.Hmap.Key.key = Fmt.Hmap.Key.create ()
-let key_long : int32 Fmt.Hmap.Key.key = Fmt.Hmap.Key.create ()
-let key_quad : int64 Fmt.Hmap.Key.key = Fmt.Hmap.Key.create ()
-let key_uchar : Uchar.t Fmt.Hmap.Key.key = Fmt.Hmap.Key.create ()
+      Some (to_string x ^ "%" ^ to_string flags ^ to_string padding ^ "!" ^ to_string r)
 
 let key_of_ty
   : type test v. string -> (test, v) Ty.t -> v Fmt.Hmap.Key.key
@@ -114,10 +109,8 @@ let key_of_ty
     let any = Fmt.Hmap.Key.create () in
     let Fmt.Ty ty1 = Fmt.ty_of_string ~any message in
     match ty0, ty1 with
-    | Byte _, Int End -> key_byte
-    | Short _, _      -> key_short
-    | Long _, _       -> key_long
-    | Quad _, _       -> key_quad
+    | Byte _, Int End -> Pps.char_to_int
+    | Long _, Int End -> Pps.int32_to_int
     | _ ->
       invalid_arg "Impossible to convert %a to %a on %S" Ty.pp ty0 Fmt.pp_ty ty1 message
 

@@ -12,41 +12,16 @@ let reword_error f = function
 
 open Sigs
 
-type metadata =
-  { name : string option
-  ; mime : string option
-  ; output : string }
-
-let pp_option pp_val ppf = function
-  | Some v -> pp_val ppf v
-  | None -> Format.fprintf ppf "<none>"
-
-let pp_string ppf = Format.fprintf ppf "%s"
-
-let pp_metadata ppf metadata =
-  Format.fprintf ppf "{ @[<hov>name= %a;@ \
-                               mime= %a;@ \
-                               output= %S@] }"
-    (pp_option pp_string) metadata.name
-    (pp_option pp_string) metadata.mime
-    metadata.output
-
-let pps =
-  let open Fmt.Hmap in
-  empty
-  |> add Tree.key_byte Fmt.pp_char
-  |> add Tree.key_short Fmt.pp_int
-  |> add Tree.key_long Fmt.pp_int32
-  |> add Tree.key_quad Fmt.pp_int64
-
 let process_fmt
-  : type v. metadata -> (_, v) Ty.t -> v Tree.fmt -> v -> metadata
-  = fun metadata _ { Tree.fmt } v ->
+  : type v. Metadata.t -> (_, v) Ty.t -> v Tree.fmt -> v -> Metadata.t
+  = fun m _ { Tree.fmt } v ->
     let buf = Buffer.create 16 in
     let ppf = Format.formatter_of_buffer buf in
-    Fmt.keval pps ppf Fmt.([ String Nop ] ^^ (fmt ()))
-      (fun ppf -> Format.fprintf ppf "%!" ; { metadata with output= Buffer.contents buf })
-      metadata.output v
+    Fmt.keval Pps.v ppf Fmt.([ String Nop ] ^^ (fmt ()))
+      (fun ppf ->
+         Format.fprintf ppf "%!" ;
+         Metadata.with_output (Buffer.contents buf) m)
+      (Metadata.output m) v
 
 let process
   : type s fd error.
@@ -54,11 +29,11 @@ let process
   -> (fd, error, s) syscall
   -> fd
   -> int64
-  -> metadata
+  -> Metadata.t
   -> Tree.operation
-  -> ((int64 * metadata, [> `Syscall of error
-                         |  `Invalid_test
-                         |  `No_process ]) result, s) io
+  -> ((int64 * Metadata.t, [> `Syscall of error
+                           |  `Invalid_test
+                           |  `No_process ]) result, s) io
   = fun ({ bind; return; } as scheduler) syscall fd abs_offset metadata -> function
     | Tree.Name _ -> return (Error `No_process)
     | Tree.Use _ -> return (Error `No_process)
@@ -96,7 +71,6 @@ let descending_walk
       | (Tree.Use (offset, name), Tree.Done) :: rest ->
         ( Offset.process scheduler syscall fd offset abs_offset >>= function
             | Ok shift ->
-              Format.eprintf "[+] use %S (offset: %Ld).\n%!" name shift ;
               let seek fd abs_offset where =
                 syscall.seek fd (Int64.add abs_offset shift) where in
               let tree = Hashtbl.find db name in
@@ -122,21 +96,18 @@ let descending_walk
       | (Tree.Rule (_, Ty.Clear, _, _) as _operation, _) :: rest ->
         iter ~level [] syscall abs_offset candidate1 rest (* TODO: compute [operation]? *)
       | (operation, tree) :: rest ->
-        Format.eprintf "[-] process %s%a %!" (String.make level '>') Tree.pp_operation operation ;
         process scheduler syscall fd abs_offset candidate1 operation >>= function
         | Ok (abs_offset, candidate1) ->
-          Format.eprintf "[ok].\n%!" ;
           go syscall ~level:(succ level) abs_offset candidate1 tree >>= fun candidate2 ->
           iter ~level (candidate2 :: results) syscall abs_offset candidate2 rest
         | Error _ ->
-          Format.eprintf "[error].\n%!" ;
           iter ~level results syscall abs_offset candidate1 rest in
     go ~level:0 syscall abs_offset metadata root
 
 let descending_walk ?(db= Hashtbl.create 0x10) ({ bind; return; } as scheduler) syscall fd tree =
   let ( >>= ) = bind in
   let ( >|= ) x f = x >>= fun x -> return (f x) in
-  descending_walk scheduler syscall db fd 0L { name= None; mime= None; output= "" } tree >|= fun metadata ->
+  descending_walk scheduler syscall db fd 0L Metadata.empty tree >|= fun metadata ->
   [ metadata ]
 
 let fill_db db = function
@@ -162,20 +133,15 @@ let rec ascending_walk
       let rec go candidate = function
         | [] -> return ()
         | (Tree.Name (_, name), tree) :: rest ->
-          Format.eprintf "[+] record %s.\n%!" name ;
           Hashtbl.add db name tree ; go candidate rest
         | (Tree.Use (_, name), _) :: rest ->
-          Format.eprintf "[+] use %s.\n%!" name ;
           let tree = Hashtbl.find db name in
           Queue.push (abs_offset, candidate, tree) queue ; go candidate rest
         | (operation, tree) :: rest ->
-          Format.eprintf "[-] process %a %!" Tree.pp_operation operation ;
           process scheduler syscall fd abs_offset candidate operation >>= function
           | Ok (abs_offset, candidate) ->
-            Format.eprintf "[ok].\n%!" ;
             Queue.push (abs_offset, candidate, tree) queue ; go candidate rest
           | Error _ ->
-            Format.eprintf "[error].\n%!" ;
             go candidate rest in
       go candidate lst >>= fun () -> ascending_walk scheduler syscall db fd results queue
     | exception Queue.Empty -> return (List.rev results)
@@ -183,5 +149,5 @@ let rec ascending_walk
 let ascending_walk scheduler syscall fd tree =
   let queue = Queue.create () in
   let db = Hashtbl.create 0x10 in
-  Queue.push (0L, { name= None; mime= None; output= "" }, tree) queue ;
+  Queue.push (0L, Metadata.empty, tree) queue ;
   ascending_walk scheduler syscall db fd [] queue

@@ -4,7 +4,7 @@ let digit c =
   | 'a' .. 'f' -> 10 + Char.code c - Char.code 'a'
   | 'A' .. 'F' -> 10 + Char.code c - Char.code 'A'
   | '0' .. '9' -> Char.code c - Char.code '0'
-  | _ -> assert false
+  | _ -> assert false (* XXX(dinosaure): should never occur! *)
 
 let to_int lexbuf ~base ~first ~last =
   let c = ref 0 in

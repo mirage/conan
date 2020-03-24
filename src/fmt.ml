@@ -43,14 +43,14 @@ module Hmap = struct
   type 'a key = 'a Key.key
 
   module Map = Map.Make(Key)
-  type binding = B : 'a key * (formatter -> 'a -> unit) -> binding
+  type binding = B : 'a key * (?padding:[ `Left of int | `Right of int | `Zero of int ] -> ?precision:int -> formatter -> 'a -> unit) -> binding
   type t = binding Map.t
 
   let empty = Map.empty
 
   let add k v t = Map.add (V k) (B (k, v)) t
 
-  let find : type a. a key -> t -> (Format.formatter -> a -> unit) option =
+  let find : type a. a key -> t -> (?padding:[ `Left of int | `Right of int | `Zero of int ] -> ?precision:int -> Format.formatter -> a -> unit) option =
     fun k t -> match Map.find (Key.V k) t with
       | B (k', v) ->
         ( match refl k.Key.tid k'.Key.tid with
@@ -86,7 +86,7 @@ type ('ty, 'v) order =
   | String : ('u, string -> 'v) padding -> ('u, 'v) order
   | Const : 'a t * 'a -> ('v, 'v) order
   | Noop : ('v, 'v) order
-  | Atom : 'a Hmap.key -> ('a -> 'v, 'v) order
+  | Atom : ('u, 'v) padding * ('v, 'a -> 'w) precision * 'a Hmap.key -> ('u, 'w) order
   | Param : ('a t -> 'a -> 'v, 'v) order
   | Ignore : ('a -> 'v, 'v) order
 and ('ty, 'v) fmt =
@@ -113,6 +113,7 @@ type v = Fmt : ('ty, 'v) fmt -> v
 type w = Ty : ('ty, 'v) ty -> w
 
 let pf = Format.fprintf
+let strf = Format.asprintf
 
 let pp_ty : type v r. Format.formatter -> (v, r) ty -> unit = fun ppf ty ->
   let rec flat : type v r. _ list -> (v, r) ty -> _ list = fun acc -> function
@@ -181,7 +182,10 @@ let rec ty_of_fmt
     | Const _ :: fmt  -> ty_of_fmt fmt
     | Noop :: fmt     -> ty_of_fmt fmt
     | Ignore :: fmt   -> Ignore (ty_of_fmt fmt)
-    | Atom key :: fmt -> Any (key, ty_of_fmt fmt)
+    | Atom (padding, precision, key) :: fmt ->
+      let padding = ty_of_padding padding in
+      let precision = ty_of_precision precision in
+      padding @ precision @ Any (key, ty_of_fmt fmt)
     | Param :: fmt    -> Param (ty_of_fmt fmt)
     | Byte (padding, precision) :: fmt ->
       let padding = ty_of_padding padding in
@@ -269,14 +273,17 @@ let rec gen
           let T (fmt, ty) = gen fmt_rest ty_rest in
           T (Float (padding, precision) :: fmt, ty)
         | _ -> raise Invalid_type )
-    | Atom key0 :: fmt_rest, Any (key1, ty_rest) ->
-      ( if not Hmap.Key.(equal (hide_type key0) (hide_type key1))
-        then raise Invalid_key
-        else match Hmap.refl key0.Hmap.Key.tid key1.Hmap.Key.tid with
-        | Some Refl ->
-          let T (fmt, ty) = gen fmt_rest ty_rest in
-          T (Atom key0 :: fmt, ty)
-        | None -> raise Invalid_key )
+    | Atom (padding, precision, key0) :: fmt_rest, _ ->
+      ( match gen_padding_precision padding precision ty with
+        | V (padding, precision, Any (key1, ty_rest)) ->
+          ( if not Hmap.Key.(equal (hide_type key0) (hide_type key1))
+            then raise Invalid_key
+            else match Hmap.refl key0.Hmap.Key.tid key1.Hmap.Key.tid with
+              | Some Refl ->
+                let T (fmt, ty) = gen fmt_rest ty_rest in
+                T (Atom (padding, precision, key0) :: fmt, ty)
+              | None -> raise Invalid_key )
+        | _ -> raise Invalid_type )
     | Noop :: fmt_rest, ty_rest ->
       gen fmt_rest ty_rest
     | Ignore :: fmt_rest, Ignore ty_rest ->
@@ -285,7 +292,6 @@ let rec gen
     | Param :: fmt_rest, Param ty_rest ->
       let T (fmt, ty) = gen fmt_rest ty_rest in
       T (Param :: fmt, ty)
-    | Atom _ :: _, _ -> raise Invalid_type
     | Param :: _, _  -> raise Invalid_type
     | Ignore :: _, _ -> raise Invalid_type
 
@@ -299,33 +305,56 @@ let ( ^^ ) = concat
 
 let pp_char ?padding ?precision ppf v =
   match padding, precision with
-  | None, None -> pf ppf "%c" v
-  | _ -> assert false
+  | Some (`Left padding), _ ->
+    pf ppf (Scanf.format_from_string (strf "%%-%dc" padding) "%c") v
+  | Some (`Zero _), _ -> pf ppf "%0c" v
+  | _ -> pf ppf "%c" v
 
 let pp_int ?padding ?precision ppf v =
   match padding, precision with
   | None, None -> pf ppf "%d" v
-  | _ -> assert false
+  | Some (`Left padding), None -> pf ppf "%-*d" padding v
+  | Some (`Zero padding), _ -> pf ppf "%0*d" padding v
+  | Some (`Right padding), None -> pf ppf "%*d" padding v
+  | None, Some precision -> pf ppf "%.*d" precision v
+  | Some (`Left padding), Some precision -> pf ppf "%-*.*d" padding precision v
+  | Some (`Right padding), Some precision -> pf ppf "%*.*d" padding precision v
 
 let pp_int32 ?padding ?precision ppf v =
   match padding, precision with
   | None, None -> pf ppf "%ld" v
-  | _ -> assert false
+  | Some (`Left padding), None -> pf ppf "%-*ld" padding v
+  | Some (`Zero padding), _ -> pf ppf "%0*ld" padding v
+  | Some (`Right padding), None -> pf ppf "%*ld" padding v
+  | None, Some precision -> pf ppf "%.*ld" precision v
+  | Some (`Left padding), Some precision -> pf ppf "%-*.*ld" padding precision v
+  | Some (`Right padding), Some precision -> pf ppf "%*.*ld" padding precision v
 
 let pp_int64 ?padding ?precision ppf v =
   match padding, precision with
   | None, None -> pf ppf "%Ld" v
-  | _ -> assert false
+  | Some (`Left padding), None -> pf ppf "%-*Ld" padding v
+  | Some (`Zero padding), _ -> pf ppf "%0*Ld" padding v
+  | Some (`Right padding), None -> pf ppf "%*Ld" padding v
+  | None, Some precision -> pf ppf "%.*Ld" precision v
+  | Some (`Left padding), Some precision -> pf ppf "%-*.*Ld" padding precision v
+  | Some (`Right padding), Some precision -> pf ppf "%*.*Ld" padding precision v
 
 let pp_float ?padding ?precision ppf v =
   match padding, precision with
   | None, None -> pf ppf "%f" v
-  | _ -> assert false
+  | Some (`Left padding), None -> pf ppf "%-*f" padding v
+  | Some (`Zero padding), _ -> pf ppf "%0*f" padding v
+  | Some (`Right padding), None -> pf ppf "%*f" padding v
+  | None, Some precision -> pf ppf "%.*f" precision v
+  | Some (`Left padding), Some precision -> pf ppf "%-*.*f" padding precision v
+  | Some (`Right padding), Some precision -> pf ppf "%*.*f" padding precision v
 
 let pp_string ?padding ppf v =
   match padding with
-  | None -> pf ppf "%s" v
-  | _ -> assert false
+  | Some (`Left padding) -> pf ppf "%-*s" padding v
+  | Some (`Right padding) -> pf ppf "%*s" padding v
+  | _ -> pf ppf "%s" v
 
 type wpd = Pd : ('v, 'r) padding -> wpd
 type wpr = Pr : ('v, 'r) precision -> wpr
@@ -409,7 +438,8 @@ and parse_flag
     Ebb (Short (padding, precision) :: fmt)
   | Some '!' ->
     let Ebb fmt = go ~any (tail s) in
-    Ebb (Atom any :: fmt)
+    let PdPrEbb (padding, precision, fmt) = make_pdprebb padding precision fmt in
+    Ebb (Atom (padding, precision, any) :: fmt)
   | Some chr -> invalid_arg "Invalid formatter %c" chr
 
 and go : type x r. any:x Hmap.key -> s -> r ebb = fun ~any s ->
@@ -483,9 +513,12 @@ let keval_order
     | Noop -> k ppf
     | Const (pp, v) -> pp ppf v ; k ppf
     | Param -> fun pp v -> pp ppf v ; k ppf
-    | Atom key -> fun v ->
-      let pp = Hmap.get key pps in
-      pp ppf v ; k ppf
+    | Atom (padding, precision, key) ->
+      let k padding ppf precision v =
+        let pp = Hmap.get key pps in
+        pp ?padding ?precision ppf v ; k ppf in
+      let k ppf padding = keval_precision ppf precision (k padding) in
+      keval_padding ppf padding k
     | String padding ->
       let k ppf padding v =
         pp_string ?padding ppf v ;

@@ -104,23 +104,18 @@ let process description filename =
   let rec go count tree = match input_line desc with
     | line ->
       Parse.parse_line line >>= fun pline ->
-      ( try let tree = Tree.append tree pline in
-          go (succ count) tree
-        with exn ->
-          Format.eprintf "[tree][%d]: %S.\n%!" count line ;
-          raise_notrace exn )
+      let tree = Tree.append tree pline in
+      go (succ count) tree
     | exception End_of_file -> Ok tree in
   match go 0 Tree.Done with
-  | Error err ->
-    Format.eprintf "[parser] %a.\n%!" Parse.pp_error err ;
-    exit exit_failure
+  | Error _ -> exit exit_failure
   | Ok tree ->
     let db = Hashtbl.create 0x10 in
     Process.fill_db db tree ;
     let fd = Unix.openfile filename Unix.[ O_RDONLY ] 0o644 in
     match Unix_scheduler.prj (Process.descending_walk ~db unix syscall fd tree) with
     | results ->
-      Format.printf "%a\n%!" (pp_list Process.pp_metadata) results
+      Format.printf "%a\n%!" (pp_list Metadata.pp) results
 
 let () = match Sys.argv with
   | [| _; description; filename; |] -> process description filename
