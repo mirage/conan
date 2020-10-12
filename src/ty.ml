@@ -229,10 +229,10 @@ let process_numeric
     | Quad (_, _, `BE) -> Size.bequad, id, Integer.int64
     | Quad (_, _, `NE) -> Size.quad, id, Integer.int64
     | _ ->
-      assert false
+      assert false (* TODO *)
 
-let read_float _scheduler _syscall _fd _endian = assert false
-let read_double _scheduler _syscall _fd _endian = assert false
+let read_float _scheduler _syscall _fd _endian = assert false (* TODO *)
+let read_double _scheduler _syscall _fd _endian = assert false (* TODO *)
 
 let process
   : type s fd error test v.
@@ -335,4 +335,4 @@ let process
       read_double scheduler syscall fd endian >|=
       reword_error (fun err -> `Syscall err) >?= fun v ->
       (return <.> ok) (Arithmetic.process_float v c)
-    | _ -> assert false
+    | _ -> assert false (* TODO *)

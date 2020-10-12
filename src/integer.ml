@@ -59,6 +59,12 @@ let bitwise_xor : type w. w t -> w -> w -> w = function
   | Int32 -> Int32.logxor
   | Int64 -> Int64.logxor
 
+let bitwise_or : type w. w t -> w -> w -> w = function
+  | Byte -> fun a b -> Char.(chr (((code a) lor (code b)) land 0xff))
+  | Short -> fun a b -> (a lor b) land 0xffff
+  | Int32 -> Int32.logor
+  | Int64 -> Int64.logor
+
 let invert : type w. w t -> w -> w = function
   | Byte -> fun v -> Char.(chr ((lnot (code v)) land 0xff))
   | Short -> fun v -> (lnot v) land 0xffff

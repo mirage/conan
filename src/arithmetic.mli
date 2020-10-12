@@ -7,6 +7,7 @@ type 'a t =
   | Mod of 'a
   | Bitwise_and of 'a
   | Bitwise_xor of 'a
+  | Bitwise_or of 'a
 
 val pp
   :  (Format.formatter -> 'a -> unit)
@@ -25,6 +26,7 @@ val rem : 'a -> 'a t
 val mul : 'a -> 'a t
 val logand : 'a -> 'a t
 val logxor : 'a -> 'a t
+val logor : 'a -> 'a t
 val invert : 'a t -> 'a t
 
 val process : ?unsigned:bool -> 'a Integer.t -> 'a -> 'a t -> 'a

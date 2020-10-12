@@ -79,5 +79,8 @@ let process
         (return <.> ok) (Int64.logand abs_offset v)
       | Arithmetic.Bitwise_xor v ->
         go_offset v >?= fun v ->
-        (return <.> ok) (Int64.logxor abs_offset v) in
+        (return <.> ok) (Int64.logxor abs_offset v)
+      | Arithmetic.Bitwise_or v ->
+        go_offset v >?= fun v ->
+        (return <.> ok) (Int64.logor abs_offset v) in
     go_offset offset

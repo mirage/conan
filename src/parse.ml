@@ -174,7 +174,8 @@ let parse_type s =
     | "pstr" -> prefix ~affix:pstring s >|= fun s -> `Pstring, s
     | "defa" -> prefix ~affix:default s >|= fun s -> `Default, s
     | "indi" -> prefix ~affix:indirect s >|= fun s -> `Indirect, s
-    | _ -> Error (`Invalid_type s) in
+    | _ -> Error (`Invalid_type s)
+    | exception _ -> Error (`Invalid_type s) in
   let endian = match is_le, is_be, is_me with
     | true, false, false -> Some `LE
     | false, true, false -> Some `BE
@@ -223,7 +224,10 @@ let parse_type s =
         if is_empty empty
         then match cut ~sep:slash s with
           | Some (a, b) ->
-            let limit, flags = if for_all is_digit a then a, b else b, a in
+            let limit, flags =
+              match Integer.parse a with
+              | Ok _ -> (a, b)
+              | Error _ -> (b, a) in
             let v = [] in
             let v = if exists is_b flags then `b :: v else v in
             let v = if exists is_B flags then `B :: v else v in
@@ -327,10 +331,8 @@ let parse_strength s =
   let arithmetic, s = span ~min:1 ~max:1 ~sat:Arithmetic.is s in
   let s = trim ~drop:is_wsp s in
   if length arithmetic = 1
-  then Integer.parse s >>= fun (with_val, empty) ->
-    if is_empty empty
-    then Ok (Arithmetic.of_string ~with_val (to_string arithmetic))
-    else Error (`Unexpected_trailer empty)
+  then Integer.parse s >>= fun (with_val, _empty) ->
+    Ok (Arithmetic.of_string ~with_val (to_string arithmetic))
   else Error `Invalid_strength
 
 let parse_use offset s =

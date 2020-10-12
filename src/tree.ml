@@ -216,7 +216,7 @@ let rule
       Ty (Ty.numeric ~unsigned
               ?endian:(endian :> Ty.endian option)
            Integer.int64 (calculation ~cast:(fun x -> x) c))
-    | _, _ -> assert false in
+    | _, _ -> assert false (* TODO *) in
   let Test test = match test, ty with
     | `True, _ -> Test Test.always_true
     | `Numeric c, Byte _ ->

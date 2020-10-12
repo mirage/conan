@@ -9,6 +9,7 @@ type 'a t =
   | Mod of 'a
   | Bitwise_and of 'a
   | Bitwise_xor of 'a
+  | Bitwise_or  of 'a
 
 let pf = Format.fprintf
 
@@ -21,6 +22,7 @@ let rec pp pp_val ppf = function
   | Mod v -> pf ppf "%%%a" pp_val v
   | Bitwise_and v -> pf ppf "&%a" pp_val v
   | Bitwise_xor v -> pf ppf "^%a" pp_val v
+  | Bitwise_or v  -> pf ppf "|%a" pp_val v
 
 let rec map ~f = function
   | Invert c -> Invert (map ~f c)
@@ -31,6 +33,7 @@ let rec map ~f = function
   | Mod v -> Mod (f v)
   | Bitwise_and v -> Bitwise_and (f v)
   | Bitwise_xor v -> Bitwise_xor (f v)
+  | Bitwise_or v  -> Bitwise_or  (f v)
 
 let rec value = function
   | Invert c -> value c
@@ -41,6 +44,7 @@ let rec value = function
   | Mod v -> v
   | Bitwise_and v -> v
   | Bitwise_xor v -> v
+  | Bitwise_or v  -> v
 
 let of_string ~with_val = function
   | "+" -> Add with_val
@@ -50,6 +54,7 @@ let of_string ~with_val = function
   | "%" -> Mod with_val
   | "&" -> Bitwise_and with_val
   | "^" -> Bitwise_xor with_val
+  | "|" -> Bitwise_or with_val
   | v -> invalid_arg "Invalid arithmetic operator: %S" v
 
 let is = function
@@ -64,6 +69,7 @@ let rem v = Mod v
 let logand v = Bitwise_and v
 let logxor v = Bitwise_xor v
 let invert v = Invert v
+let logor v = Bitwise_or v
 
 let rec process
   : type a. ?unsigned:bool -> a Integer.t -> a -> a t -> a
@@ -75,6 +81,7 @@ let rec process
     | Mod b -> Integer.rem ~unsigned w a b
     | Bitwise_and b -> Integer.bitwise_and w a b
     | Bitwise_xor b -> Integer.bitwise_xor w a b
+    | Bitwise_or b -> Integer.bitwise_or w a b
     | Invert c -> Integer.invert w (process w a c)
 
 let process_float a = function
@@ -85,5 +92,6 @@ let process_float a = function
   | Mod b -> Float.rem a b
   | Bitwise_and _
   | Bitwise_xor _
+  | Bitwise_or _
   | Invert _ ->
     invalid_arg "Invalid bitwise operation on float"

@@ -18,6 +18,7 @@ val div : ?unsigned:bool -> 'a t -> 'a -> 'a -> 'a
 val rem : ?unsigned:bool -> 'a t -> 'a -> 'a -> 'a
 val bitwise_and : 'a t -> 'a -> 'a -> 'a
 val bitwise_xor : 'a t -> 'a -> 'a -> 'a
+val bitwise_or : 'a t -> 'a -> 'a -> 'a
 val invert : 'a t -> 'a -> 'a
 
 val greater : 'a t -> 'a -> 'a -> bool
