@@ -10,6 +10,4 @@ let pp_int32_to_int ?padding ?precision ppf v =
 
 let v =
   let open Fmt.Hmap in
-  empty
-  |> add char_to_int pp_char_to_int
-  |> add int32_to_int pp_int32_to_int
+  empty |> add char_to_int pp_char_to_int |> add int32_to_int pp_int32_to_int

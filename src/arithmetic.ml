@@ -9,7 +9,7 @@ type 'a t =
   | Mod of 'a
   | Bitwise_and of 'a
   | Bitwise_xor of 'a
-  | Bitwise_or  of 'a
+  | Bitwise_or of 'a
 
 let pf = Format.fprintf
 
@@ -22,7 +22,7 @@ let rec pp pp_val ppf = function
   | Mod v -> pf ppf "%%%a" pp_val v
   | Bitwise_and v -> pf ppf "&%a" pp_val v
   | Bitwise_xor v -> pf ppf "^%a" pp_val v
-  | Bitwise_or v  -> pf ppf "|%a" pp_val v
+  | Bitwise_or v -> pf ppf "|%a" pp_val v
 
 let rec map ~f = function
   | Invert c -> Invert (map ~f c)
@@ -33,7 +33,7 @@ let rec map ~f = function
   | Mod v -> Mod (f v)
   | Bitwise_and v -> Bitwise_and (f v)
   | Bitwise_xor v -> Bitwise_xor (f v)
-  | Bitwise_or v  -> Bitwise_or  (f v)
+  | Bitwise_or v -> Bitwise_or (f v)
 
 let rec value = function
   | Invert c -> value c
@@ -44,7 +44,7 @@ let rec value = function
   | Mod v -> v
   | Bitwise_and v -> v
   | Bitwise_xor v -> v
-  | Bitwise_or v  -> v
+  | Bitwise_or v -> v
 
 let of_string ~with_val = function
   | "+" -> Add with_val
@@ -62,27 +62,34 @@ let is = function
   | _ -> false
 
 let add v = Add v
+
 let sub v = Sub v
+
 let mul v = Mul v
+
 let div v = Div v
+
 let rem v = Mod v
+
 let logand v = Bitwise_and v
+
 let logxor v = Bitwise_xor v
+
 let invert v = Invert v
+
 let logor v = Bitwise_or v
 
-let rec process
-  : type a. ?unsigned:bool -> a Integer.t -> a -> a t -> a
-  = fun ?(unsigned= false) w a -> function
-    | Add b -> Integer.add w a b
-    | Sub b -> Integer.sub w a b
-    | Mul b -> Integer.mul w a b
-    | Div b -> Integer.div ~unsigned w a b
-    | Mod b -> Integer.rem ~unsigned w a b
-    | Bitwise_and b -> Integer.bitwise_and w a b
-    | Bitwise_xor b -> Integer.bitwise_xor w a b
-    | Bitwise_or b -> Integer.bitwise_or w a b
-    | Invert c -> Integer.invert w (process w a c)
+let rec process : type a. ?unsigned:bool -> a Integer.t -> a -> a t -> a =
+ fun ?(unsigned = false) w a -> function
+  | Add b -> Integer.add w a b
+  | Sub b -> Integer.sub w a b
+  | Mul b -> Integer.mul w a b
+  | Div b -> Integer.div ~unsigned w a b
+  | Mod b -> Integer.rem ~unsigned w a b
+  | Bitwise_and b -> Integer.bitwise_and w a b
+  | Bitwise_xor b -> Integer.bitwise_xor w a b
+  | Bitwise_or b -> Integer.bitwise_or w a b
+  | Invert c -> Integer.invert w (process w a c)
 
 let process_float a = function
   | Add b -> Float.add a b
@@ -90,8 +97,5 @@ let process_float a = function
   | Mul b -> Float.mul a b
   | Div b -> Float.div a b
   | Mod b -> Float.rem a b
-  | Bitwise_and _
-  | Bitwise_xor _
-  | Bitwise_or _
-  | Invert _ ->
-    invalid_arg "Invalid bitwise operation on float"
+  | Bitwise_and _ | Bitwise_xor _ | Bitwise_or _ | Invert _ ->
+      invalid_arg "Invalid bitwise operation on float"

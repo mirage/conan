@@ -5,5 +5,8 @@
 
 (rule
  (alias runtest)
- (deps (:test test_parser.exe) (source_tree ../examples))
- (action (run %{test} --color=always)))
+ (deps
+  (:test test_parser.exe)
+  (source_tree ../examples))
+ (action
+  (run %{test} --color=always)))

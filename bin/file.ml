@@ -1,28 +1,36 @@
 open Conan
 open Sigs
 
-module Make (S : sig type +'a t end) = struct
+module Make (S : sig
+  type +'a t
+end) =
+struct
   type t
+
   type +'a s = 'a S.t
 
   external prj : ('a, t) io -> 'a S.t = "%identity"
+
   external inj : 'a S.t -> ('a, t) io = "%identity"
 end
 
-module Unix_scheduler = Make(struct type +'a t = 'a end)
+module Unix_scheduler = Make (struct
+  type +'a t = 'a
+end)
 
 let unix =
   let open Unix_scheduler in
-  { bind= (fun x f -> f (prj x))
-  ; return= (fun x -> inj x) }
+  { bind = (fun x f -> f (prj x)); return = (fun x -> inj x) }
 
-let seek fd offset where = match where with
+let seek fd offset where =
+  match where with
   | SET -> Unix.lseek fd (Int64.to_int offset) Unix.SEEK_SET
   | CUR -> Unix.lseek fd (Int64.to_int offset) Unix.SEEK_CUR
   | END -> Unix.lseek fd (Int64.to_int offset) Unix.SEEK_END
 
 let seek fd offset where =
-  try let ret = seek fd offset where in
+  try
+    let ret = seek fd offset where in
     assert (ret = Int64.to_int offset) ;
     Unix_scheduler.inj (Ok ())
   with uerror -> Unix_scheduler.inj (Error uerror)
@@ -30,7 +38,9 @@ let seek fd offset where =
 let read fd len =
   let rs = Bytes.create len in
   let ic = Unix.in_channel_of_descr fd in
-  try really_input ic rs 0 len ; Unix_scheduler.inj (Ok (Bytes.unsafe_to_string rs))
+  try
+    really_input ic rs 0 len ;
+    Unix_scheduler.inj (Ok (Bytes.unsafe_to_string rs))
   with uerror -> Unix_scheduler.inj (Error uerror)
 
 let line fd =
@@ -47,51 +57,57 @@ let read_int8 fd =
   with uerror -> Unix_scheduler.inj (Error uerror)
 
 external get_uint16 : bytes -> int -> int = "%caml_bytes_get16"
+
 external get_uint32 : bytes -> int -> int32 = "%caml_bytes_get32"
+
 external get_uint64 : bytes -> int -> int64 = "%caml_bytes_get64"
 
 let read_int16 fd =
   let ic = Unix.in_channel_of_descr fd in
   let rs = Bytes.create 2 in
-  try really_input ic rs 0 2 ;
+  try
+    really_input ic rs 0 2 ;
     Unix_scheduler.inj (Ok (get_uint16 rs 0))
   with uerror -> Unix_scheduler.inj (Error uerror)
 
 let read_int32 fd =
   let ic = Unix.in_channel_of_descr fd in
   let rs = Bytes.create 4 in
-  try really_input ic rs 0 4 ;
+  try
+    really_input ic rs 0 4 ;
     Unix_scheduler.inj (Ok (get_uint32 rs 0))
   with uerror -> Unix_scheduler.inj (Error uerror)
 
 let read_int64 fd =
   let ic = Unix.in_channel_of_descr fd in
   let rs = Bytes.create 8 in
-  try really_input ic rs 0 8 ;
+  try
+    really_input ic rs 0 8 ;
     Unix_scheduler.inj (Ok (get_uint64 rs 0))
   with uerror -> Unix_scheduler.inj (Error uerror)
 
 let syscall =
-  { seek= seek
-  ; read= read
-  ; read_int8= read_int8
-  ; read_int16_ne= read_int16
-  ; read_int32_ne= read_int32
-  ; read_int64_ne= read_int64
-  ; line= line }
+  {
+    seek;
+    read;
+    read_int8;
+    read_int16_ne = read_int16;
+    read_int32_ne = read_int32;
+    read_int64_ne = read_int64;
+    line;
+  }
 
 let exit_success = 0
+
 let exit_failure = 1
 
-let ( >>= ) x f = match x with
-  | Ok x -> f x
-  | Error err -> Error err
+let ( >>= ) x f = match x with Ok x -> f x | Error err -> Error err
 
 type fmt = [ `MIME | `Usual ]
 
 let parse ic = Parse.parse_in_channel ic
 
-let run ?(fmt= `Usual) filename description =
+let run ?(fmt = `Usual) filename description =
   let desc = open_in description in
   parse desc >>= fun lst ->
   let tree = List.fold_left Tree.append Tree.Done lst in
@@ -101,20 +117,28 @@ let run ?(fmt= `Usual) filename description =
   let result =
     Unix_scheduler.prj (Process.descending_walk ~db unix syscall fd tree) in
   match fmt with
-  | `Usual -> Format.printf "%s:%s\n%!" filename (Metadata.output result) ; Ok ()
-  | `MIME -> match Metadata.mime result with
-    | None -> Error `Not_found
-    | Some mime -> Format.printf "%s\n%!" mime ; Ok ()
+  | `Usual ->
+      Format.printf "%s:%s\n%!" filename (Metadata.output result) ;
+      Ok ()
+  | `MIME ->
+  match Metadata.mime result with
+  | None -> Error `Not_found
+  | Some mime ->
+      Format.printf "%s\n%!" mime ;
+      Ok ()
 
 let pp_error ppf = function
   | #Parse.error as err -> Parse.pp_error ppf err
   | `Not_found -> Format.fprintf ppf "Not found"
 
 let mime = ref false
+
 let filename = ref None
+
 let description = ref None
 
-let anonymous_argument v = match !filename, !description with
+let anonymous_argument v =
+  match (!filename, !description) with
   | None, _ -> filename := Some v
   | Some _, None -> description := Some v
   | Some _, Some _ -> ()
@@ -122,18 +146,22 @@ let anonymous_argument v = match !filename, !description with
 let usage = Format.asprintf "%s [--mime] filename description\n%!" Sys.argv.(0)
 
 let spec =
-  [ "--mime", Arg.Set mime, "Causes the file command to output mime type strings \
-                             rather than the more traditional human readable ones. \
-                             Thus it may say 'text/plain; charset=ascii' rather than \
-                             'ASCII text'" ]
+  [
+    ( "--mime",
+      Arg.Set mime,
+      "Causes the file command to output mime type strings rather than the \
+       more traditional human readable ones. Thus it may say 'text/plain; \
+       charset=ascii' rather than 'ASCII text'" );
+  ]
 
 let () =
   Arg.parse spec anonymous_argument usage ;
-  match !filename, !description with
+  match (!filename, !description) with
   | None, None | Some _, None | None, Some _ ->
-    Format.eprintf "%s" usage ; exit exit_failure
-  | Some filename, Some description ->
-    let fmt = if !mime then `MIME else `Usual in
-    match run ~fmt filename description with
-    | Ok () -> exit exit_success
-    | Error err -> Format.eprintf "%s: %a.\n%!" Sys.argv.(0) pp_error err
+      Format.eprintf "%s" usage ;
+      exit exit_failure
+  | Some filename, Some description -> (
+      let fmt = if !mime then `MIME else `Usual in
+      match run ~fmt filename description with
+      | Ok () -> exit exit_success
+      | Error err -> Format.eprintf "%s: %a.\n%!" Sys.argv.(0) pp_error err)

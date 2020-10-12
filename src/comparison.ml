@@ -9,11 +9,15 @@ type 'a t =
   | Xor of 'a
 
 let equal_to v = Equal v
+
 let different_to v = Different v
+
 let greater_than v = Greater v
+
 let lower_than v = Lower v
 
 let bitwise_and v = And v
+
 let bitwise_xor v = Xor v
 
 let of_string ~with_val = function
@@ -51,20 +55,18 @@ let pp pp_val ppf = function
   | And v -> pf ppf "&%a" pp_val v
   | Xor v -> pf ppf "^%a" pp_val v
 
-let is = function
-  | '=' | '!' | '<' | '>' | '&' | '^' -> true | _ -> false
+let is = function '=' | '!' | '<' | '>' | '&' | '^' -> true | _ -> false
 
-let process
-  : type a. a Integer.t -> a -> a t -> bool
-  = fun w a -> function
-    | Equal b -> Integer.equal w a b
-    | Different b -> Integer.different w a b
-    | Greater b -> Integer.greater w a b
-    | Lower b -> Integer.lower w a b
-    | And b ->
+let process : type a. a Integer.t -> a -> a t -> bool =
+ fun w a -> function
+  | Equal b -> Integer.equal w a b
+  | Different b -> Integer.different w a b
+  | Greater b -> Integer.greater w a b
+  | Lower b -> Integer.lower w a b
+  | And b ->
       let v = Integer.bitwise_and w a b in
       Integer.different w v (Integer.zero w)
-    | Xor b ->
+  | Xor b ->
       let v = Integer.bitwise_xor w a b in
       Integer.different w v (Integer.zero w)
 
@@ -73,13 +75,11 @@ let process_float a = function
   | Different b -> not (Float.equal a b)
   | Greater b -> a > b
   | Lower b -> a < b
-  | And _ | Xor _ ->
-    invalid_arg "Invalid bitwise operator on float"
+  | And _ | Xor _ -> invalid_arg "Invalid bitwise operator on float"
 
 let process_string a = function
   | Equal b -> a = b
   | Different b -> a <> b
   | Greater b -> a > b
   | Lower b -> a < b
-  | And _ | Xor _ ->
-    invalid_arg "Invalid bitwise operation on string"
+  | And _ | Xor _ -> invalid_arg "Invalid bitwise operation on string"

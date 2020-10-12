@@ -9,8 +9,10 @@ val pp : Format.formatter -> t -> unit
 
 open Sigs
 
-val process
-  :  's scheduler
-  -> ('fd, 'error, 's) syscall
-  -> 'fd -> t -> int64
-  -> ((int64, 'error) result, 's) io
+val process :
+  's scheduler ->
+  ('fd, 'error, 's) syscall ->
+  'fd ->
+  t ->
+  int64 ->
+  ((int64, 'error) result, 's) io
