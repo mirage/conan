@@ -1,0 +1,9 @@
+(executable
+ (name test_parser)
+ (modules test_parser)
+ (libraries conan alcotest))
+
+(rule
+ (alias runtest)
+ (deps (:test test_parser.exe) (source_tree ../examples))
+ (action (run %{test} --color=always)))
