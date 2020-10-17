@@ -18,4 +18,6 @@ val to_short : t -> int
 
 val to_byte : t -> char
 
+val to_ptime : t -> Ptime.Span.t
+
 val parse : Sub.t -> (t * Sub.t, [> `Empty | `Invalid_number of string ]) result

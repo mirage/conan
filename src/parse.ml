@@ -345,12 +345,18 @@ let is_x s =
   let s = trim ~drop:is_wsp s in
   equal_bytes s x
 
+let is_modifier s = match head s with
+  | Some ('G' .. 'Z') | Some ('g' .. 'z') -> length s = 1
+  | _ -> false
+
 let parse_test s =
   if is_x s
   then Ok `True
   else
     let comparison, s = span ~min:1 ~max:1 ~sat:Comparison.is s in
     let comparison = if is_empty comparison then "=" else to_string comparison in
+    let s = trim s in (* XXX(dinosaure): we can have [< 10], so [s = " 10"], we
+                         must [trim] it. *)
     let parse_string s =
       let lexbuf = Lexing.from_string (to_string s) in
       let buf = Buffer.create (length s) in
@@ -359,7 +365,7 @@ let parse_test s =
       Ok (`String (Comparison.of_string ~with_val:contents comparison)) in
     match Number.parse s with
     | Ok (v, empty) ->
-        if is_empty empty
+        if is_empty empty || is_modifier empty
         then Ok (`Numeric (Comparison.of_string ~with_val:v comparison))
         else parse_string s
     | Error (`Invalid_number _ | `Empty) ->
@@ -447,6 +453,8 @@ type line =
   | `Guid of offset * string
   | `Use of offset * bool * string ]
 
+let escape = v "\\"
+
 (* TODO(dinosaure): we should clear semantic of this function:
    "x\t" returns ("x", [])
 *)
@@ -457,8 +465,21 @@ let best_effort s =
       match cuts ~empty:false ~sep:wsp s with
       | [] -> Ok (test0, [])
       | [ test1 ] -> if is_empty test0 then Ok (test1, []) else Ok (test0, [])
-      | test1 :: message -> Ok (test1, message))
-  | test :: message -> Ok (test, message)
+      | hd :: tl ->
+        let test, message =
+          List.fold_left
+            (fun (test, message) elt -> match test, message with
+               | [], [] -> [ elt ], []
+               | hd :: _ as test, [] ->
+                 if is_suffix ~affix:escape hd
+                 then (elt :: test, [])
+                 else (test, [ elt ])
+               | _, message -> (test, elt :: message))
+            ([ hd ], []) tl in
+        let test = concat ~sep:wsp (List.rev test) in
+        Ok (test, message))
+  | test :: message ->
+    Ok (test, message)
 
 type error =
   [ `Empty

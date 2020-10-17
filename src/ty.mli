@@ -29,7 +29,7 @@ type ('test, 'v) t = private
     }
       -> (string, string) t
   | Pascal_string : (string, string) t
-  | Unicode : [ `BE | `LE ] -> (Uchar.t, string) t
+  | Unicode_string : [ `BE | `LE ] -> (string, string) t
   | Byte : unsigned * char Arithmetic.t -> (char, char) t
   | Short : unsigned * int Arithmetic.t * [ `BE | `LE | `NE ] -> (int, int) t
   | Long : unsigned * int32 Arithmetic.t * endian -> (int32, int32) t
@@ -37,6 +37,7 @@ type ('test, 'v) t = private
   | Float : unsigned * float Arithmetic.t * endian -> (float, float) t
   | Double : unsigned * float Arithmetic.t * endian -> (float, float) t
   | Indirect : [ `Rel | `Abs ] -> ('test, 'v) t
+  | Date : [ `Local | `UTC | `Window ] * [ `s32 | `s64 ] * Ptime.span Arithmetic.t * endian -> (Ptime.t, string) t
 
 val pp : Format.formatter -> ('test, 'v) t -> unit
 
@@ -68,7 +69,7 @@ val with_range : int64 -> (string, string) t -> (string, string) t
 
 val with_pattern : string -> (string, string) t -> (string, string) t
 
-val unicode : [ `BE | `LE ] -> (Uchar.t, string) t
+val str_unicode : [ `BE | `LE ] -> (string, string) t
 
 val numeric :
   ?unsigned:bool ->
@@ -76,6 +77,14 @@ val numeric :
   'w Integer.t ->
   'w Arithmetic.t ->
   ('w, 'w) t
+
+val date : 
+  [ `Date
+  | `Ldate
+  | `Qdate
+  | `Qldate
+  | `Qwdate ] -> [ `BE | `LE | `ME ] option -> Ptime.Span.t Arithmetic.t ->
+  (Ptime.t, string) t
 
 val float :
   ?unsigned:bool -> ?endian:endian -> float Arithmetic.t -> (float, float) t

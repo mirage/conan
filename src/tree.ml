@@ -1,3 +1,5 @@
+let () = Printexc.record_backtrace true
+
 let ( <.> ) f g x = f (g x)
 
 let invalid_arg fmt = Format.kasprintf invalid_arg fmt
@@ -145,7 +147,7 @@ let format_of_ty : type test v. (test, v) Ty.t -> _ -> (v -> 'r, 'r) Fmt.fmt =
         with_space Fmt.([ ignore ] ^^ fmt)
     | Byte _ -> with_space (Fmt.of_string ~any message Fmt.(Char End))
     | Search _ -> with_space (Fmt.of_string ~any message Fmt.(String End))
-    | Unicode _ -> with_space (Fmt.of_string ~any message Fmt.(String End))
+    | Unicode_string _ -> with_space (Fmt.of_string ~any message Fmt.(String End))
     | Short _ -> with_space (Fmt.of_string ~any message Fmt.(Int End))
     | Long _ -> with_space (Fmt.of_string ~any message Fmt.(Int32 End))
     | Quad _ -> with_space (Fmt.of_string ~any message Fmt.(Int64 End))
@@ -153,6 +155,7 @@ let format_of_ty : type test v. (test, v) Ty.t -> _ -> (v -> 'r, 'r) Fmt.fmt =
     | Double _ -> with_space (Fmt.of_string ~any message Fmt.(Float End))
     | Regex _ -> with_space (Fmt.of_string ~any message Fmt.(String End))
     | Pascal_string -> with_space (Fmt.of_string ~any message Fmt.(String End))
+    | Date _ -> with_space (Fmt.of_string ~any message Fmt.(String End))
     | Indirect _ -> assert false
     (* TODO *)
   with _ -> (
@@ -161,6 +164,23 @@ let format_of_ty : type test v. (test, v) Ty.t -> _ -> (v -> 'r, 'r) Fmt.fmt =
         let key = key_of_ty message ty in
         with_space (Fmt.of_string message1 ~any:key Fmt.(Any (key, End)))
     | None -> with_space Fmt.([ ignore ] ^^ of_string ~any message End))
+
+(* TODO: "\\0" -> "\000", it's an hack! *)
+let normalize_regex str =
+  let zero = Sub.v "\\0" in
+  let rec go str = match Sub.cut ~sep:zero str with
+    | Some (a, b) ->
+      let b = go b in
+      Sub.concat [a; Sub.v "\000"; b]
+    | None -> str in
+  Sub.to_string (go (Sub.v str))
+
+type date =
+  [ `Date
+  | `Ldate
+  | `Qdate
+  | `Qldate
+  | `Qwdate ]
 
 let rule : Parse.rule -> operation =
  fun ((_level, o), ty, test, message) ->
@@ -173,7 +193,7 @@ let rule : Parse.rule -> operation =
         let kind = if line then `Line else `Byte in
         Ty (Ty.regex ~case_insensitive ~start ~limit kind)
     | _, `Regex None -> Ty (Ty.regex `Byte)
-    | _, `String16 endian -> Ty (Ty.unicode endian)
+    | _, `String16 endian -> Ty (Ty.str_unicode endian)
     | _, `String8 (Some (b, _B, c, _C)) ->
         Ty
           (Ty.search ~lower_case_insensitive:c ~upper_case_insensitive:_C
@@ -201,8 +221,11 @@ let rule : Parse.rule -> operation =
              ~lower_case_insensitive ~upper_case_insensitive ~trim kind
              ~pattern:"" range)
     | _, `Indirect rel -> Ty (Ty.indirect (if rel then `Rel else `Abs))
+    | _, `Numeric (endian, (#date as date), c) ->
+        let cast = Ptime.Span.of_int_s <.> Int64.to_int in
+        Ty (Ty.date date endian (calculation ~cast c))
     | unsigned, `Numeric (_endian, `Byte, c) ->
-        let cast = Char.chr <.> Int64.to_int in
+        let cast = Char.chr <.> ( land ) 0xff <.> Int64.to_int in
         Ty (Ty.numeric ~unsigned Integer.byte (calculation ~cast c))
     | unsigned, `Numeric (Some ((`BE | `LE) as endian), `Short, c) ->
         let cast = Int64.to_int in
@@ -222,8 +245,18 @@ let rule : Parse.rule -> operation =
              ?endian:(endian :> Ty.endian option)
              Integer.int64
              (calculation ~cast:(fun x -> x) c))
-    | _, _ -> assert false
-    (* TODO *) in
+    | unsigned, `Numeric (endian, `Double, c) ->
+        let cast = Int64.float_of_bits in
+        Ty
+          (Ty.double ~unsigned
+             ?endian:(endian :> Ty.endian option)
+             (calculation ~cast c))
+    | unsigned, `Numeric (endian, `Float, c) ->
+        let cast = Int64.float_of_bits in
+        Ty
+          (Ty.float ~unsigned
+             ?endian:(endian :> Ty.endian option)
+             (calculation ~cast c)) in
   let (Test test) =
     match (test, ty) with
     | `True, _ -> Test Test.always_true
@@ -235,11 +268,6 @@ let rule : Parse.rule -> operation =
         Test (Test.numeric Integer.int32 (Comparison.map ~f:Number.to_int32 c))
     | `Numeric c, Quad _ ->
         Test (Test.numeric Integer.int64 (Comparison.map ~f:Number.to_int64 c))
-    | `Numeric c, Unicode _ ->
-        let f = Uchar.of_int <.> Number.to_int in
-        let c = Comparison.map ~f c in
-        Test (Test.unicode c)
-    (* TODO(dinosaure): [`String] and [Unicode]. *)
     | `Numeric c, Double _ ->
         let c = Comparison.map ~f:Number.to_float c in
         Test (Test.float c)
@@ -247,14 +275,19 @@ let rule : Parse.rule -> operation =
         let c = Comparison.map ~f:Number.to_float c in
         Test (Test.float c)
     | `String c, Search _ | `String c, Pascal_string -> Test (Test.string c)
+    | `String c, Unicode_string _ ->
+      Test (Test.string c)
     | `String c, Regex _ ->
         let f v =
-          try Re.Posix.re v
-          with _ -> invalid_arg "Invalid POSIX regular expression: %S" v in
+          let v = normalize_regex v in
+          try Re.Pcre.re v 
+          with _ -> Re.any (* TODO *) in
         Test (Test.regex (Comparison.map ~f c))
     | `Numeric c, Search _ ->
         let c = Comparison.map ~f:Number.to_int c in
         Test (Test.length c)
+    | `Numeric c, Date _ ->
+        Test (Test.date (Comparison.map ~f:Number.to_ptime c))
     | `Numeric c, ty ->
         let v = Comparison.value c in
         invalid_arg "Impossible to test a number (%a) with the given type: %a"
@@ -270,7 +303,7 @@ let rule : Parse.rule -> operation =
     | String _, Default
     | Numeric _, Default
     | Float _, Default
-    | Unicode _, Default ->
+    | Unicode_string _, Default ->
         Rule
           ( offset,
             ty,
@@ -305,6 +338,14 @@ let rule : Parse.rule -> operation =
     | Numeric (Int32, _), Long _ ->
         Rule (offset, ty, test, { fmt = (fun () -> format_of_ty ty message) })
     | Numeric (Int64, _), Quad _ ->
+        Rule (offset, ty, test, { fmt = (fun () -> format_of_ty ty message) })
+    | Date _, Date _ ->
+        Rule (offset, ty, test, { fmt = (fun () -> format_of_ty ty message) })
+    | Float _, Double _ ->
+        Rule (offset, ty, test, { fmt = (fun () -> format_of_ty ty message) })
+    | Float _, Float _ ->
+        Rule (offset, ty, test, { fmt = (fun () -> format_of_ty ty message) })
+    | String _, Unicode_string _ ->
         Rule (offset, ty, test, { fmt = (fun () -> format_of_ty ty message) })
     | True, _ ->
         Rule

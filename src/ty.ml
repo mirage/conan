@@ -30,7 +30,7 @@ type ('test, 'v) t =
     }
       -> (string, string) t
   | Pascal_string (* uh?! *) : (string, string) t
-  | Unicode : [ `BE | `LE ] -> (Uchar.t, string) t
+  | Unicode_string : [ `BE | `LE ] -> (string, string) t
   | Byte : unsigned * char Arithmetic.t -> (char, char) t
   | Short : unsigned * int Arithmetic.t * [ `BE | `LE | `NE ] -> (int, int) t
   | Long : unsigned * int32 Arithmetic.t * endian -> (int32, int32) t
@@ -38,6 +38,7 @@ type ('test, 'v) t =
   | Float : unsigned * float Arithmetic.t * endian -> (float, float) t
   | Double : unsigned * float Arithmetic.t * endian -> (float, float) t
   | Indirect : [ `Rel | `Abs ] -> ('test, 'v) t
+  | Date : [ `Local | `UTC | `Window ] * [ `s32 | `s64 ] * Ptime.span Arithmetic.t * endian -> (Ptime.t, string) t
 
 let pf = Format.fprintf
 
@@ -51,6 +52,11 @@ let pp_int32 ppf = pf ppf "0x%lx"
 
 let pp_int64 ppf = pf ppf "0x%Lx"
 
+let pp_ptime ppf v =
+  match Ptime.Span.to_int_s v with
+  | Some v -> pf ppf "%d" v
+  | None -> pf ppf "%.0f" (Ptime.Span.to_float_s v)
+
 let pp_float ppf = pf ppf "%f"
 
 let pp_endian ppf = function
@@ -58,6 +64,10 @@ let pp_endian ppf = function
   | `LE -> pf ppf "le"
   | `ME -> pf ppf "me"
   | `NE -> pf ppf "ne"
+
+let pp_date_size ppf = function
+  | `s32 -> ()
+  | `s64 -> pf ppf "q"
 
 let pp : type test v. Format.formatter -> (test, v) t -> unit =
  fun ppf -> function
@@ -101,8 +111,8 @@ let pp : type test v. Format.formatter -> (test, v) t -> unit =
         (pp_flag 'C') upper_case_insensitive (pp_flag 'b') binary (pp_flag 't')
         text (pp_flag 'T') trim range
   | Pascal_string -> pf ppf "pstring"
-  | Unicode `BE -> pf ppf "bestring16"
-  | Unicode `LE -> pf ppf "lestring16"
+  | Unicode_string `BE -> pf ppf "bestring16"
+  | Unicode_string `LE -> pf ppf "lestring16"
   | Byte (unsigned, arithmetic) ->
       let pp_byte ppf v = pf ppf "%02x" (Char.code v) in
       pf ppf "%abyte%a" pp_unsigned unsigned (Arithmetic.pp pp_byte) arithmetic
@@ -123,6 +133,12 @@ let pp : type test v. Format.formatter -> (test, v) t -> unit =
         (Arithmetic.pp pp_float) arithmetic
   | Indirect `Rel -> pf ppf "indirect/r"
   | Indirect `Abs -> pf ppf "indirect"
+  | Date (`Local, size, arithmetic, endian) ->
+      pf ppf "%a%aldate%a" pp_endian endian pp_date_size size (Arithmetic.pp pp_ptime) arithmetic
+  | Date (`UTC, size, arithmetic, endian) ->
+      pf ppf "%a%adate%a" pp_endian endian pp_date_size size (Arithmetic.pp pp_ptime) arithmetic
+  | Date (`Window, size, arithmetic, endian) ->
+      pf ppf "%a%awdate%a" pp_endian endian pp_date_size size (Arithmetic.pp pp_ptime) arithmetic
 
 let default : (default, default) t = Default
 
@@ -159,7 +175,7 @@ let with_pattern pattern = function
   | Search v -> Search { v with pattern }
   | t -> t
 
-let unicode endian = Unicode endian
+let str_unicode endian = Unicode_string endian
 
 let system_endian = if Sys.big_endian then `BE else `LE
 
@@ -183,6 +199,25 @@ let numeric :
       Short ({ unsigned }, a, endian)
   | Integer.Int32 -> Long ({ unsigned }, a, endian)
   | Integer.Int64 -> Quad ({ unsigned }, a, endian)
+
+let date kind endian a =
+  let endian = match endian with
+    | Some `BE -> `BE
+    | Some `LE -> `LE
+    | Some `ME -> `ME
+    | None ->
+      if Sys.big_endian then `BE else `LE in
+  match kind with
+  | `Date ->
+    Date (`UTC, `s32, a, endian)
+  | `Ldate ->
+    Date (`Local, `s32, a, endian)
+  | `Qdate ->
+    Date (`UTC, `s64, a, endian)
+  | `Qldate ->
+    Date (`Local, `s64, a, endian)
+  | `Qwdate ->
+    Date (`Window, `s64, a, endian)
 
 let float ?(unsigned = false) ?(endian = system_endian) c =
   Float ({ unsigned }, c, endian)
@@ -216,13 +251,31 @@ let process_numeric :
   | Quad (_, _, `LE) -> (Size.lequad, id, Integer.int64)
   | Quad (_, _, `BE) -> (Size.bequad, id, Integer.int64)
   | Quad (_, _, `NE) -> (Size.quad, id, Integer.int64)
-  | _ -> assert false
+  | _ -> assert false (* TODO *)
 
-(* TODO *)
+let read_float ({ bind; return; } as scheduler) syscall fd endian =
+  let ( >>= ) = bind in
+  let size = match endian with
+    | `LE -> Size.lelong
+    | `BE -> Size.belong
+    | `ME -> assert false (* TODO *)
+    | `NE -> Size.long in
+  Size.read scheduler syscall fd size >>= function
+  | Ok v ->
+    let v = Int64.to_int32 v in (* safe *)
+    return (Ok (Int32.float_of_bits v))
+  | Error _ as err -> return err
 
-let read_float _scheduler _syscall _fd _endian = assert false (* TODO *)
-
-let read_double _scheduler _syscall _fd _endian = assert false (* TODO *)
+let read_double ({ bind; return; } as scheduler) syscall fd endian =
+  let ( >>= ) = bind in
+  let size = match endian with
+    | `LE -> Size.lequad
+    | `BE -> Size.bequad
+    | `ME -> assert false (* TODO *)
+    | `NE -> Size.quad in
+  Size.read scheduler syscall fd size >>= function
+  | Ok v -> return (Ok (Int64.float_of_bits v))
+  | Error _ as err -> return err
 
 let process :
     type s fd error test v.

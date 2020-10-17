@@ -74,12 +74,15 @@ let float_literal =
   ('.' [ '0'-'9' '_']*)?
   ([ 'e' 'E' ] [ '+' '-' ]? [ '0'-'9' ] [ '0'-'9' '_' ]*)?
 
+let modifier = [ 'G'-'Z' 'g'-'z' ]
+
 rule int_or_float = parse
   | (('-' | '+')* int_literal) as lit { Ok (`Int lit) }
   | (('-' | '+')* float_literal) as lit { Ok (`Float lit) }
   | _ { Error `Malformed }
 
 and int = parse
+  | ((('-' | '+')* int_literal) as lit) modifier { Ok lit }
   | (('-' | '+')* int_literal) as lit { Ok lit }
   | _ { Error `Malformed }
 
