@@ -234,6 +234,7 @@ let ( <.> ) f g x = f (g x)
 let newline = "\n" (* TODO: windows *)
 
 let ok x = Ok x
+let error err = Error err
 
 let reword_error f = function Ok x -> Ok x | Error err -> Error (f err)
 
@@ -284,7 +285,7 @@ let process :
     fd ->
     int64 ->
     (test, v) t ->
-    ((v, [> `Syscall of error | `Not_found ]) result, s) io =
+    ((v, [> `Syscall of error | `Invalid_date | `Not_found ]) result, s) io =
  fun ({ bind; return } as scheduler) syscall fd abs_offset ty ->
   let ( >>= ) = bind in
   let ( >?= ) x f =
@@ -378,6 +379,36 @@ let process :
       read_double scheduler syscall fd endian
       >|= reword_error (fun err -> `Syscall err)
       >?= fun v -> (return <.> ok) (Arithmetic.process_float v c)
-  | _ -> assert false
-
-(* TODO *)
+  | Date (_, `s32, c, endian) ->
+      let size = match endian with
+        | `BE -> Size.belong
+        | `LE -> Size.lelong
+        | `NE -> Size.long
+        | `ME -> assert false in
+      syscall.seek fd abs_offset SET >|= reword_error (fun err -> `Syscall err)
+      >?= fun () ->
+      Size.read scheduler syscall fd size
+      >?= (return <.> ok <.> Ptime.Span.of_int_s <.> Int64.to_int)
+      >|= reword_error (fun err -> `Syscall err)
+      >?= fun v ->
+        ( match Ptime.of_span (Arithmetic.process_ptime v c) with
+        | Some v -> return (ok (Ptime.to_rfc3339 v))
+        | None -> return (error `Invalid_date) )
+  | Date (_, `s64, c, endian) ->
+      let size = match endian with
+        | `BE -> Size.bequad
+        | `LE -> Size.lequad
+        | `NE -> Size.quad
+        | `ME -> assert false in
+      syscall.seek fd abs_offset SET >|= reword_error (fun err -> `Syscall err)
+      >?= fun () ->
+      Size.read scheduler syscall fd size
+      >?= (return <.> ok <.> Ptime.Span.of_int_s <.> Int64.to_int)
+      >|= reword_error (fun err -> `Syscall err)
+      >?= fun v ->
+        ( match Ptime.of_span (Arithmetic.process_ptime v c) with
+        | Some v -> return (ok (Ptime.to_rfc3339 v))
+        | None -> return (error `Invalid_date) )
+  | Unicode_string _ -> return (ok "")
+  | Pascal_string -> assert false
+  | Indirect _ -> assert false

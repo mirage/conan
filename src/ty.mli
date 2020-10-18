@@ -102,4 +102,4 @@ val process :
   'fd ->
   int64 ->
   ('test, 'v) t ->
-  (('v, [> `Syscall of 'error | `Not_found ]) result, 's) io
+  (('v, [> `Syscall of 'error | `Invalid_date | `Not_found ]) result, 's) io

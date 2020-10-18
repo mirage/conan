@@ -4,8 +4,6 @@ let ( <.> ) f g x = f (g x)
 
 let ok x = Ok x
 
-let newline = "\n" (* TODO *)
-
 let reword_error f = function Ok _ as v -> v | Error err -> Error (f err)
 
 open Sigs

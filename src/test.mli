@@ -1,5 +1,6 @@
 type 'a t = private
   | True : 'a t
+  | False : 'a t
   | Numeric : 'a Integer.t * 'a Comparison.t -> 'a t
   | Float : float Comparison.t -> float t
   | Unicode_string : string Comparison.t -> string t
@@ -11,6 +12,7 @@ type 'a t = private
 val pp : Format.formatter -> 'a t -> unit
 
 val always_true : _ t
+val always_false : _ t
 
 val numeric : 'w Integer.t -> 'w Comparison.t -> 'w t
 

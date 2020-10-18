@@ -107,12 +107,27 @@ type fmt = [ `MIME | `Usual ]
 
 let parse ic = Parse.parse_in_channel ic
 
-let run ?(fmt = `Usual) filename description =
-  let desc = open_in description in
-  parse desc >>= fun lst ->
-  let tree = List.fold_left Tree.append Tree.Done lst in
+let ( / ) = Filename.concat
+
+let fill_tree () =
+  let files = Sys.readdir "examples" in
+  let files = Array.to_list files in
+  let rec go tree = function
+    | [] -> tree
+    | file :: rest ->
+      let ic = open_in ("examples" / file) in
+      let rs = parse ic in
+      close_in ic ;
+      match rs with
+      | Ok lines -> go (List.fold_left Tree.append tree lines) rest
+      | _ -> go tree rest in
+  go Tree.Done files
+
+let run ?(fmt = `Usual) filename =
+  let tree = fill_tree () in
   let db = Hashtbl.create 0x10 in
   Process.fill_db db tree ;
+  Format.printf "[+] database filled.\n%!" ;
   let fd = Unix.openfile filename Unix.[ O_RDONLY ] 0o644 in
   let result =
     Unix_scheduler.prj (Process.descending_walk ~db unix syscall fd tree) in
@@ -135,15 +150,12 @@ let mime = ref false
 
 let filename = ref None
 
-let description = ref None
-
 let anonymous_argument v =
-  match (!filename, !description) with
-  | None, _ -> filename := Some v
-  | Some _, None -> description := Some v
-  | Some _, Some _ -> ()
+  match !filename with
+  | None -> filename := Some v
+  | Some _ -> ()
 
-let usage = Format.asprintf "%s [--mime] filename description\n%!" Sys.argv.(0)
+let usage = Format.asprintf "%s [--mime] filename\n%!" Sys.argv.(0)
 
 let spec =
   [
@@ -156,12 +168,12 @@ let spec =
 
 let () =
   Arg.parse spec anonymous_argument usage ;
-  match (!filename, !description) with
-  | None, None | Some _, None | None, Some _ ->
+  match !filename with
+  | None ->
       Format.eprintf "%s" usage ;
       exit exit_failure
-  | Some filename, Some description -> (
+  | Some filename -> (
       let fmt = if !mime then `MIME else `Usual in
-      match run ~fmt filename description with
+      match run ~fmt filename with
       | Ok () -> exit exit_success
       | Error err -> Format.eprintf "%s: %a.\n%!" Sys.argv.(0) pp_error err)

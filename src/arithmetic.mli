@@ -40,3 +40,5 @@ val invert : 'a t -> 'a t
 val process : ?unsigned:bool -> 'a Integer.t -> 'a -> 'a t -> 'a
 
 val process_float : float -> float t -> float
+
+val process_ptime : Ptime.Span.t -> Ptime.Span.t t -> Ptime.Span.t

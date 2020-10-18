@@ -220,8 +220,7 @@ let parse_type s =
     | false, true, false -> Some `BE
     | false, false, true -> Some `ME
     | false, false, false -> None
-    | _ -> assert false
-    (* XXX(dinosaure): should never occur! *) in
+    | _ -> assert false (* XXX(dinosaure): should never occur! *) in
   res >>= fun (kind, s) ->
   match kind with
   | `Clear -> Ok (unsigned, `Clear)
@@ -366,14 +365,14 @@ let parse_test s =
     match Number.parse s with
     | Ok (v, empty) ->
         if is_empty empty || is_modifier empty
-        then Ok (`Numeric (Comparison.of_string ~with_val:v comparison))
+        then Ok (`Numeric (Comparison.of_string ~with_val:(v, to_string s) comparison))
         else parse_string s
     | Error (`Invalid_number _ | `Empty) ->
         if is_empty s
         then
           Ok
             (`Numeric
-              (Comparison.of_string ~with_val:(Number.int64 0L) comparison))
+              (Comparison.of_string ~with_val:(Number.int64 0L, "") comparison))
         else parse_string s
 
 let parse_message s =
@@ -438,7 +437,7 @@ and kind =
 and search_flag = [ `t | `T | `b | `B | `c | `C | `w | `W ]
 
 and test =
-  [ `True | `Numeric of Number.t Comparison.t | `String of string Comparison.t ]
+  [ `True | `Numeric of (Number.t * string) Comparison.t | `String of string Comparison.t ]
 
 and message = [ `No_space of string | `Space of string ]
 

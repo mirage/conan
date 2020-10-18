@@ -157,7 +157,6 @@ let format_of_ty : type test v. (test, v) Ty.t -> _ -> (v -> 'r, 'r) Fmt.fmt =
     | Pascal_string -> with_space (Fmt.of_string ~any message Fmt.(String End))
     | Date _ -> with_space (Fmt.of_string ~any message Fmt.(String End))
     | Indirect _ -> assert false
-    (* TODO *)
   with _ -> (
     match force_to_use_any_formatter (Sub.v message) with
     | Some message1 ->
@@ -261,34 +260,41 @@ let rule : Parse.rule -> operation =
     match (test, ty) with
     | `True, _ -> Test Test.always_true
     | `Numeric c, Byte _ ->
+        let c = Comparison.map ~f:fst c in
         Test (Test.numeric Integer.byte (Comparison.map ~f:Number.to_byte c))
     | `Numeric c, Short _ ->
+        let c = Comparison.map ~f:fst c in
         Test (Test.numeric Integer.short (Comparison.map ~f:Number.to_short c))
     | `Numeric c, Long _ ->
+        let c = Comparison.map ~f:fst c in
         Test (Test.numeric Integer.int32 (Comparison.map ~f:Number.to_int32 c))
     | `Numeric c, Quad _ ->
+        let c = Comparison.map ~f:fst c in
         Test (Test.numeric Integer.int64 (Comparison.map ~f:Number.to_int64 c))
     | `Numeric c, Double _ ->
+        let c = Comparison.map ~f:fst c in
         let c = Comparison.map ~f:Number.to_float c in
         Test (Test.float c)
     | `Numeric c, Float _ ->
+        let c = Comparison.map ~f:fst c in
         let c = Comparison.map ~f:Number.to_float c in
         Test (Test.float c)
     | `String c, Search _ | `String c, Pascal_string -> Test (Test.string c)
     | `String c, Unicode_string _ ->
       Test (Test.string c)
     | `String c, Regex _ ->
-        let f v =
-          let v = normalize_regex v in
-          try Re.Pcre.re v 
-          with _ -> Re.any (* TODO *) in
-        Test (Test.regex (Comparison.map ~f c))
+          let f v = Re.Posix.re (normalize_regex v) in
+          ( try Test (Test.regex (Comparison.map ~f c))
+            with _ -> Test Test.always_false )
     | `Numeric c, Search _ ->
-        let c = Comparison.map ~f:Number.to_int c in
-        Test (Test.length c)
+        (* XXX(dinosaure): choose [string] repr instead [numeric] repr. *)
+        let c = Comparison.map ~f:snd c in
+        Test (Test.string c)
     | `Numeric c, Date _ ->
+        let c = Comparison.map ~f:fst c in
         Test (Test.date (Comparison.map ~f:Number.to_ptime c))
     | `Numeric c, ty ->
+        let c = Comparison.map ~f:fst c in
         let v = Comparison.value c in
         invalid_arg "Impossible to test a number (%a) with the given type: %a"
           Number.pp v Ty.pp ty
@@ -352,6 +358,12 @@ let rule : Parse.rule -> operation =
           ( offset,
             ty,
             Test.always_true,
+            { fmt = (fun () -> format_of_ty ty message) } )
+    | False, _ ->
+        Rule
+          ( offset,
+            ty,
+            Test.always_false,
             { fmt = (fun () -> format_of_ty ty message) } )
     | test, ty ->
         invalid_arg "Impossible to operate a test (%a) on the given value (%a)"

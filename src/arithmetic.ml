@@ -99,3 +99,13 @@ let process_float a = function
   | Mod b -> Float.rem a b
   | Bitwise_and _ | Bitwise_xor _ | Bitwise_or _ | Invert _ ->
       invalid_arg "Invalid bitwise operation on float"
+
+let rec process_ptime a = function
+  | Add b -> Ptime.Span.add a b
+  | Sub b -> Ptime.Span.sub a b
+  | Invert c -> Ptime.Span.neg (process_ptime a c)
+  | Mul _
+  | Div _
+  | Mod _
+  | Bitwise_and _ | Bitwise_xor _ | Bitwise_or _ ->
+    invalid_arg "Invalid operation on date"
