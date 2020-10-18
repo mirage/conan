@@ -40,7 +40,9 @@ and kind =
 and search_flag = [ `t | `T | `b | `B | `c | `C | `w | `W ]
 
 and test =
-  [ `True | `Numeric of (Number.t * string) Comparison.t | `String of string Comparison.t ]
+  [ `True
+  | `Numeric of (Number.t * string) Comparison.t
+  | `String of string Comparison.t ]
 
 and message = [ `No_space of string | `Space of string ]
 

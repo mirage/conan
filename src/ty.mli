@@ -37,7 +37,12 @@ type ('test, 'v) t = private
   | Float : unsigned * float Arithmetic.t * endian -> (float, float) t
   | Double : unsigned * float Arithmetic.t * endian -> (float, float) t
   | Indirect : [ `Rel | `Abs ] -> ('test, 'v) t
-  | Date : [ `Local | `UTC | `Window ] * [ `s32 | `s64 ] * Ptime.span Arithmetic.t * endian -> (Ptime.t, string) t
+  | Date :
+      [ `Local | `UTC | `Window ]
+      * [ `s32 | `s64 ]
+      * Ptime.span Arithmetic.t
+      * endian
+      -> (Ptime.t, string) t
 
 val pp : Format.formatter -> ('test, 'v) t -> unit
 
@@ -78,12 +83,10 @@ val numeric :
   'w Arithmetic.t ->
   ('w, 'w) t
 
-val date : 
-  [ `Date
-  | `Ldate
-  | `Qdate
-  | `Qldate
-  | `Qwdate ] -> [ `BE | `LE | `ME ] option -> Ptime.Span.t Arithmetic.t ->
+val date :
+  [ `Date | `Ldate | `Qdate | `Qldate | `Qwdate ] ->
+  [ `BE | `LE | `ME ] option ->
+  Ptime.Span.t Arithmetic.t ->
   (Ptime.t, string) t
 
 val float :

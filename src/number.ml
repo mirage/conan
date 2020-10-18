@@ -29,9 +29,10 @@ let to_byte = function
 
 let to_ptime = function
   | Int v -> Ptime.Span.of_int_s (Int64.to_int v)
-  | Float v -> match Ptime.Span.of_float_s v with
-    | Some v -> v
-    | None -> Fmt.invalid_arg "Invalid POSIX time value: %f" v
+  | Float v ->
+  match Ptime.Span.of_float_s v with
+  | Some v -> v
+  | None -> Fmt.invalid_arg "Invalid POSIX time value: %f" v
 
 let parse s =
   let open Sub in
@@ -41,13 +42,13 @@ let parse s =
   then Error `Empty
   else
     match Lexer.int_or_float lexbuf with
-    | Ok (`Int literal) ->
-      (* XXX(dinosaure): [literal] can not be empty (see [lexer.mll]). *)
-      ( match literal.[String.length literal - 1] with
+    | Ok (`Int literal) -> (
+        (* XXX(dinosaure): [literal] can not be empty (see [lexer.mll]). *)
+        match literal.[String.length literal - 1] with
         | '_' -> Error (`Invalid_number v)
         | _ ->
-          let first = Lexing.lexeme_end lexbuf in
-          Ok (Int (Int64.of_string literal), with_range ~first s) )
+            let first = Lexing.lexeme_end lexbuf in
+            Ok (Int (Int64.of_string literal), with_range ~first s))
     | Ok (`Float literal) ->
         let first = Lexing.lexeme_end lexbuf in
         Ok (Float (Float.of_string literal), with_range ~first s)

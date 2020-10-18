@@ -114,13 +114,13 @@ let fill_tree () =
   let files = Array.to_list files in
   let rec go tree = function
     | [] -> tree
-    | file :: rest ->
-      let ic = open_in ("examples" / file) in
-      let rs = parse ic in
-      close_in ic ;
-      match rs with
-      | Ok lines -> go (List.fold_left Tree.append tree lines) rest
-      | _ -> go tree rest in
+    | file :: rest -> (
+        let ic = open_in ("examples" / file) in
+        let rs = parse ic in
+        close_in ic ;
+        match rs with
+        | Ok lines -> go (List.fold_left Tree.append tree lines) rest
+        | _ -> go tree rest) in
   go Tree.Done files
 
 let run ?(fmt = `Usual) filename =
@@ -151,9 +151,7 @@ let mime = ref false
 let filename = ref None
 
 let anonymous_argument v =
-  match !filename with
-  | None -> filename := Some v
-  | Some _ -> ()
+  match !filename with None -> filename := Some v | Some _ -> ()
 
 let usage = Format.asprintf "%s [--mime] filename\n%!" Sys.argv.(0)
 

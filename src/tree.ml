@@ -147,7 +147,8 @@ let format_of_ty : type test v. (test, v) Ty.t -> _ -> (v -> 'r, 'r) Fmt.fmt =
         with_space Fmt.([ ignore ] ^^ fmt)
     | Byte _ -> with_space (Fmt.of_string ~any message Fmt.(Char End))
     | Search _ -> with_space (Fmt.of_string ~any message Fmt.(String End))
-    | Unicode_string _ -> with_space (Fmt.of_string ~any message Fmt.(String End))
+    | Unicode_string _ ->
+        with_space (Fmt.of_string ~any message Fmt.(String End))
     | Short _ -> with_space (Fmt.of_string ~any message Fmt.(Int End))
     | Long _ -> with_space (Fmt.of_string ~any message Fmt.(Int32 End))
     | Quad _ -> with_space (Fmt.of_string ~any message Fmt.(Int64 End))
@@ -167,19 +168,15 @@ let format_of_ty : type test v. (test, v) Ty.t -> _ -> (v -> 'r, 'r) Fmt.fmt =
 (* TODO: "\\0" -> "\000", it's an hack! *)
 let normalize_regex str =
   let zero = Sub.v "\\0" in
-  let rec go str = match Sub.cut ~sep:zero str with
+  let rec go str =
+    match Sub.cut ~sep:zero str with
     | Some (a, b) ->
-      let b = go b in
-      Sub.concat [a; Sub.v "\000"; b]
+        let b = go b in
+        Sub.concat [ a; Sub.v "\000"; b ]
     | None -> str in
   Sub.to_string (go (Sub.v str))
 
-type date =
-  [ `Date
-  | `Ldate
-  | `Qdate
-  | `Qldate
-  | `Qwdate ]
+type date = [ `Date | `Ldate | `Qdate | `Qldate | `Qwdate ]
 
 let rule : Parse.rule -> operation =
  fun ((_level, o), ty, test, message) ->
@@ -280,12 +277,11 @@ let rule : Parse.rule -> operation =
         let c = Comparison.map ~f:Number.to_float c in
         Test (Test.float c)
     | `String c, Search _ | `String c, Pascal_string -> Test (Test.string c)
-    | `String c, Unicode_string _ ->
-      Test (Test.string c)
-    | `String c, Regex _ ->
-          let f v = Re.Posix.re (normalize_regex v) in
-          ( try Test (Test.regex (Comparison.map ~f c))
-            with _ -> Test Test.always_false )
+    | `String c, Unicode_string _ -> Test (Test.string c)
+    | `String c, Regex _ -> (
+        let f v = Re.Posix.re (normalize_regex v) in
+        try Test (Test.regex (Comparison.map ~f c))
+        with _ -> Test Test.always_false)
     | `Numeric c, Search _ ->
         (* XXX(dinosaure): choose [string] repr instead [numeric] repr. *)
         let c = Comparison.map ~f:snd c in

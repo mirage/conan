@@ -12,6 +12,7 @@ type 'a t = private
 val pp : Format.formatter -> 'a t -> unit
 
 val always_true : _ t
+
 val always_false : _ t
 
 val numeric : 'w Integer.t -> 'w Comparison.t -> 'w t

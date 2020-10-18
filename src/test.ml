@@ -19,7 +19,8 @@ let pp_float ppf = pf ppf "%f"
 
 let pp_string ppf = pf ppf "%S"
 
-let pp_ptime ppf v = match Ptime.Span.to_int_s v with
+let pp_ptime ppf v =
+  match Ptime.Span.to_int_s v with
   | Some v -> pf ppf "%d" v
   | None -> pf ppf "%.0f" (Ptime.Span.to_float_s v)
 
@@ -36,6 +37,7 @@ let pp : type a. Format.formatter -> a t -> unit =
   | Date v -> pf ppf "date:%a" (Comparison.pp pp_ptime) v
 
 let always_true = True
+
 let always_false = False
 
 let numeric w c = Numeric (w, c)
@@ -63,7 +65,8 @@ let process : type test v. (test, v) Ty.t -> test t -> v -> v option =
   | Quad _, Numeric (w, c) -> if Comparison.process w a c then Some a else None
   | Float _, Float c -> if Comparison.process_float a c then Some a else None
   | Double _, Float c -> if Comparison.process_float a c then Some a else None
-  | Unicode_string _, (String c | Unicode_string c) -> if Comparison.process_string a c then Some a else None
+  | Unicode_string _, (String c | Unicode_string c) ->
+      if Comparison.process_string a c then Some a else None
   | Search _, String c -> if Comparison.process_string a c then Some a else None
   | Regex { case_insensitive; _ }, Regex c -> (
       let re = Comparison.value c in
