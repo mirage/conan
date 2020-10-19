@@ -65,7 +65,9 @@ let process : type a. a Integer.t -> a -> a t -> bool =
   | Lower b -> Integer.lower w a b
   | And b ->
       let v = Integer.bitwise_and w a b in
-      Integer.different w v (Integer.zero w)
+      Integer.equal w v b
+      (* XXX(dinosaure): to specify that the value from the file must have set all of the bits
+       * that are set in the specified value. *)
   | Xor b ->
       let v = Integer.bitwise_xor w a b in
       Integer.different w v (Integer.zero w)

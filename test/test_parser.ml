@@ -14,12 +14,13 @@ let test_tree filename =
   let ic = open_in ("../examples/" ^ filename) in
   match Parse.parse_in_channel ic with
   | Ok lst ->
-    let _tree = List.fold_left
-        (fun (i, acc) line ->
-           Format.eprintf "Append line %d.\n%!" i ;
-           succ i, Tree.append acc line)
-        (1, Tree.Done) lst in
-    Alcotest.(check pass) "tree" () ()
+      let _tree =
+        List.fold_left
+          (fun (i, acc) line ->
+            Format.eprintf "Append line %d.\n%!" i ;
+            (succ i, Tree.append acc line))
+          (1, Tree.Done) lst in
+      Alcotest.(check pass) "tree" () ()
   | Error err -> Alcotest.failf "%a" Parse.pp_error err
 
 let database =
@@ -338,5 +339,9 @@ let database =
     "zyxel";
   ]
 
-let () = Alcotest.run "conan" [ ("parser", List.map test_parser database)
-                              ; ("tree", List.map test_tree database) ]
+let () =
+  Alcotest.run "conan"
+    [
+      ("parser", List.map test_parser database);
+      ("tree", List.map test_tree database);
+    ]

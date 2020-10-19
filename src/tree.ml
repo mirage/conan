@@ -6,7 +6,7 @@ let invalid_arg fmt = Format.kasprintf invalid_arg fmt
 
 let pf = Format.fprintf
 
-type 'a fmt = { fmt : 'r. unit -> ('a -> 'r, 'r) Fmt.fmt }
+type 'a fmt = { fmt : 'r. unit -> ('a -> 'r, 'r) Fmt.fmt; str : Parse.message }
 
 type operation =
   | Rule : Offset.t * ('test, 'v) Ty.t * 'test Test.t * 'v fmt -> operation
@@ -14,9 +14,20 @@ type operation =
   | Use : { offset : Offset.t; invert : bool; name : string } -> operation
   | MIME : string -> operation
 
+type with_debug = {
+  operation : operation;
+  filename : string option;
+  line : int option;
+}
+
+let pp_message ppf = function
+  | `No_space str -> pf ppf "\b%s" str
+  | `Space str -> pf ppf "%s" str
+
 let pp_operation ppf = function
-  | Rule (offset, ty, test, _) ->
-      pf ppf "%a\t%a\t%a\t#fmt" Offset.pp offset Ty.pp ty Test.pp test
+  | Rule (offset, ty, test, fmt) ->
+      pf ppf "%a\t%a\t%a\t%a" Offset.pp offset Ty.pp ty Test.pp test pp_message
+        fmt.str
   | Name (offset, name) -> pf ppf "%a\t%s" Offset.pp offset name
   | Use { offset; invert = false; name } ->
       pf ppf "%a\t%s" Offset.pp offset name
@@ -24,7 +35,13 @@ let pp_operation ppf = function
       pf ppf "\\^%a\t%s" Offset.pp offset name
   | MIME v -> pf ppf "!:mime %s" v
 
-type tree = Node of (operation * tree) list | Done
+let pp_operation_with_debug ppf t =
+  match (t.filename, t.line) with
+  | None, None | Some _, None | None, Some _ -> pp_operation ppf t.operation
+  | Some filename, Some line ->
+      pf ppf "[%s:%d] - %a" filename line pp_operation t.operation
+
+type 'a tree = Node of ('a * 'a tree) list | Done
 
 let pp_level ppf n =
   let rec go = function
@@ -310,19 +327,19 @@ let rule : Parse.rule -> operation =
           ( offset,
             ty,
             Test.always_true,
-            { fmt = (fun () -> format_of_ty ty message) } )
+            { fmt = (fun () -> format_of_ty ty message); str = message } )
     | True, Clear | String _, Clear | Numeric _, Clear ->
         Rule
           ( offset,
             ty,
             Test.always_true,
-            { fmt = (fun () -> format_of_ty ty message) } )
+            { fmt = (fun () -> format_of_ty ty message); str = message } )
     | Regex c, Regex _ ->
         Rule
           ( offset,
             ty,
             Test.regex c,
-            { fmt = (fun () -> format_of_ty ty message) } )
+            { fmt = (fun () -> format_of_ty ty message); str = message } )
     | String c, Search { range; _ } ->
         let pattern = Comparison.value c in
         let range = max range ((Int64.of_int <.> String.length) pattern) in
@@ -330,37 +347,73 @@ let rule : Parse.rule -> operation =
           ( offset,
             (Ty.with_range range <.> Ty.with_pattern pattern) ty,
             test,
-            { fmt = (fun () -> format_of_ty ty message) } )
+            { fmt = (fun () -> format_of_ty ty message); str = message } )
     | Length _, Search _ ->
-        Rule (offset, ty, test, { fmt = (fun () -> format_of_ty ty message) })
+        Rule
+          ( offset,
+            ty,
+            test,
+            { fmt = (fun () -> format_of_ty ty message); str = message } )
     | Numeric (Byte, _), Byte _ ->
-        Rule (offset, ty, test, { fmt = (fun () -> format_of_ty ty message) })
+        Rule
+          ( offset,
+            ty,
+            test,
+            { fmt = (fun () -> format_of_ty ty message); str = message } )
     | Numeric (Short, _), Short _ ->
-        Rule (offset, ty, test, { fmt = (fun () -> format_of_ty ty message) })
+        Rule
+          ( offset,
+            ty,
+            test,
+            { fmt = (fun () -> format_of_ty ty message); str = message } )
     | Numeric (Int32, _), Long _ ->
-        Rule (offset, ty, test, { fmt = (fun () -> format_of_ty ty message) })
+        Rule
+          ( offset,
+            ty,
+            test,
+            { fmt = (fun () -> format_of_ty ty message); str = message } )
     | Numeric (Int64, _), Quad _ ->
-        Rule (offset, ty, test, { fmt = (fun () -> format_of_ty ty message) })
+        Rule
+          ( offset,
+            ty,
+            test,
+            { fmt = (fun () -> format_of_ty ty message); str = message } )
     | Date _, Date _ ->
-        Rule (offset, ty, test, { fmt = (fun () -> format_of_ty ty message) })
+        Rule
+          ( offset,
+            ty,
+            test,
+            { fmt = (fun () -> format_of_ty ty message); str = message } )
     | Float _, Double _ ->
-        Rule (offset, ty, test, { fmt = (fun () -> format_of_ty ty message) })
+        Rule
+          ( offset,
+            ty,
+            test,
+            { fmt = (fun () -> format_of_ty ty message); str = message } )
     | Float _, Float _ ->
-        Rule (offset, ty, test, { fmt = (fun () -> format_of_ty ty message) })
+        Rule
+          ( offset,
+            ty,
+            test,
+            { fmt = (fun () -> format_of_ty ty message); str = message } )
     | String _, Unicode_string _ ->
-        Rule (offset, ty, test, { fmt = (fun () -> format_of_ty ty message) })
+        Rule
+          ( offset,
+            ty,
+            test,
+            { fmt = (fun () -> format_of_ty ty message); str = message } )
     | True, _ ->
         Rule
           ( offset,
             ty,
             Test.always_true,
-            { fmt = (fun () -> format_of_ty ty message) } )
+            { fmt = (fun () -> format_of_ty ty message); str = message } )
     | False, _ ->
         Rule
           ( offset,
             ty,
             Test.always_false,
-            { fmt = (fun () -> format_of_ty ty message) } )
+            { fmt = (fun () -> format_of_ty ty message); str = message } )
     | test, ty ->
         invalid_arg "Impossible to operate a test (%a) on the given value (%a)"
           Test.pp test Ty.pp ty in
@@ -401,11 +454,17 @@ let rec depth_left = function
   | Done | Node [] -> 0
   | Node ((_, hd) :: _) -> 1 + depth_left hd
 
-let append tree (line : Parse.line) =
+let operation_with_debug ?filename ?line operation =
+  { operation; filename; line }
+
+let operation_without_debug { operation; _ } = operation
+
+let append tree ?filename ?line:n (line : Parse.line) =
   match line with
   | `Rule _ | `Name _ | `Use _ | `Mime _ ->
       let max = depth_left tree in
       let level, operation = operation ~max line in
+      let operation = operation_with_debug ?filename ?line:n operation in
       if level <= left tree
       then
         let rec go cur tree =

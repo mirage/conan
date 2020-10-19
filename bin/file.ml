@@ -114,27 +114,37 @@ let fill_tree () =
   let files = Array.to_list files in
   let rec go tree = function
     | [] -> tree
-    | file :: rest -> (
-        let ic = open_in ("examples" / file) in
+    | filename :: rest -> (
+        let ic = open_in ("examples" / filename) in
         let rs = parse ic in
         close_in ic ;
         match rs with
-        | Ok lines -> go (List.fold_left Tree.append tree lines) rest
+        | Ok lines ->
+            let _, tree =
+              List.fold_left
+                (fun (line, tree) v ->
+                  (succ line, Tree.append ~filename ~line tree v))
+                (1, tree) lines in
+            go tree rest
         | _ -> go tree rest) in
   go Tree.Done files
 
 let run ?(fmt = `Usual) filename =
   let tree = fill_tree () in
+  Format.printf "[+] database filled.\n%!" ;
   let db = Hashtbl.create 0x10 in
   Process.fill_db db tree ;
-  Format.printf "[+] database filled.\n%!" ;
   let fd = Unix.openfile filename Unix.[ O_RDONLY ] 0o644 in
   let result =
     Unix_scheduler.prj (Process.descending_walk ~db unix syscall fd tree) in
+  Unix.close fd ;
   match fmt with
-  | `Usual ->
-      Format.printf "%s:%s\n%!" filename (Metadata.output result) ;
-      Ok ()
+  | `Usual -> (
+      match Metadata.output result with
+      | Some output ->
+          Format.printf "%s: %s\n%!" filename output ;
+          Ok ()
+      | None -> Error `Not_found)
   | `MIME ->
   match Metadata.mime result with
   | None -> Error `Not_found
