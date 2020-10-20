@@ -146,6 +146,23 @@ module MFile = struct
     | Some (off, _, payload) -> Ok (get_uint64 payload off)
     | None -> Error `Out_of_bound
 
+  let line t =
+    let buf = Buffer.create 0x1000 in
+    let rec go () =
+      match read t 4096 with
+      | None -> Error `Out_of_bound
+      | Some (off, len, payload) ->
+        try
+          let pos = String.index_from payload off '\n' in
+          Buffer.add_substring buf payload (off + pos) (len - pos) ;
+          t.seek <- Int64.(add t.seek (of_int pos)) ;
+          Ok (Buffer.contents buf)
+        with _ ->
+          Buffer.add_substring buf payload off len ;
+          t.seek <- Int64.(add t.seek (of_int len)) ;
+          go () in
+    go ()
+
   let read t required =
     match read t required with
     | Some (off, len, payload) ->
@@ -153,28 +170,6 @@ module MFile = struct
         then Ok (String.sub payload off required)
         else Error `Out_of_bound
     | None -> Error `Out_of_bound
-
-  let line t =
-    let buf = Buffer.create 0x100 in
-    let rec go () =
-      let len = min Int64.(sub t.max t.seek) 4096L in
-      let len = Int64.to_int len in
-      if len = 0
-      then Error `Out_of_bound
-      else
-        match read t len with
-        | Error _ as err -> err
-        | Ok payload ->
-        try
-          let pos = String.index payload '\n' in
-          Buffer.add_substring buf payload pos (String.length payload - pos) ;
-          t.seek <- Int64.(add t.seek (of_int pos)) ;
-          Ok (Buffer.contents buf)
-        with _ ->
-          Buffer.add_string buf payload ;
-          t.seek <- Int64.(add t.seek (of_int (String.length payload))) ;
-          go () in
-    go ()
 
   let syscall =
     let open Unix_scheduler in
