@@ -11,10 +11,13 @@ synopsis:     "Identity type of your file (such as the MIME type)"
 description: """Conan is a re-implementation in OCaml of the file command.
 The library is system-agnostic and can be used with MirageOS."""
 
-build: [ "dune" "build" "-p" name "-j" jobs ]
-run-test: [ "dune" "runtest" "-p" name "-j" jobs ]
+build:
+  [ [ "dune" "substr" ] {pinned}
+    [ "dune" "build" "-p" name "-j" jobs ]
+    [ "dune" "runtest" "-p" name "-j" jobs ] {with-test} ]
 
 depends: [
   "ocaml"       {>= "4.07.0"}
   "re"          {>= "1.9.0"}
+  "alcotest"    {with-test}
 ]

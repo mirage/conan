@@ -1,6 +1,6 @@
 (library
  (name conan)
  (public_name conan)
- (libraries ptime re.pcre))
+ (libraries stdlib-shims re.pcre))
 
 (ocamllex lexer)

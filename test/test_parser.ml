@@ -19,7 +19,7 @@ let test_tree filename =
           (fun (i, acc) line ->
             Format.eprintf "Append line %d.\n%!" i ;
             (succ i, Tree.append acc line))
-          (1, Tree.Done) lst in
+          (1, Tree.empty) lst in
       Alcotest.(check pass) "tree" () ()
   | Error err -> Alcotest.failf "%a" Parse.pp_error err
 

@@ -152,15 +152,15 @@ module MFile = struct
       match read t 4096 with
       | None -> Error `Out_of_bound
       | Some (off, len, payload) ->
-        try
-          let pos = String.index_from payload off '\n' in
-          Buffer.add_substring buf payload (off + pos) (len - pos) ;
-          t.seek <- Int64.(add t.seek (of_int pos)) ;
-          Ok (Buffer.contents buf)
-        with _ ->
-          Buffer.add_substring buf payload off len ;
-          t.seek <- Int64.(add t.seek (of_int len)) ;
-          go () in
+      try
+        let pos = String.index_from payload off '\n' in
+        Buffer.add_substring buf payload (off + pos) (len - pos) ;
+        t.seek <- Int64.(add t.seek (of_int pos)) ;
+        Ok (Buffer.contents buf)
+      with _ ->
+        Buffer.add_substring buf payload off len ;
+        t.seek <- Int64.(add t.seek (of_int len)) ;
+        go () in
     go ()
 
   let read t required =
@@ -281,7 +281,7 @@ let fill_tree () =
                 (1, tree) lines in
             go tree rest
         | _ -> go tree rest) in
-  go Tree.Done files
+  go Tree.empty files
 
 let run ?(memoize = false) ?(fmt = `Usual) filename =
   let tree = fill_tree () in

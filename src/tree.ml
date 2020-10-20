@@ -1,5 +1,3 @@
-let () = Printexc.record_backtrace true
-
 let ( <.> ) f g x = f (g x)
 
 let invalid_arg fmt = Format.kasprintf invalid_arg fmt
@@ -8,13 +6,15 @@ let pf = Format.fprintf
 
 type 'a fmt = { fmt : 'r. unit -> ('a -> 'r, 'r) Fmt.fmt; str : Parse.message }
 
+let fmt { fmt; _ } = fmt
+
 type operation =
   | Rule : Offset.t * ('test, 'v) Ty.t * 'test Test.t * 'v fmt -> operation
   | Name : Offset.t * string -> operation
   | Use : { offset : Offset.t; invert : bool; name : string } -> operation
   | MIME : string -> operation
 
-type with_debug = {
+type elt = {
   operation : operation;
   filename : string option;
   line : int option;
@@ -41,7 +41,7 @@ let pp_operation_with_debug ppf t =
   | Some filename, Some line ->
       pf ppf "[%s:%d] - %a" filename line pp_operation t.operation
 
-type 'a tree = Node of ('a * 'a tree) list | Done
+type t = Node of (elt * t) list | Done
 
 let pp_level ppf n =
   let rec go = function
@@ -51,20 +51,18 @@ let pp_level ppf n =
         go (pred n) in
   go (max n 0)
 
-let pp_tree ppf tree =
+let pp ppf tree =
   let rec go level = function
     | Done -> ()
     | Node lst ->
         let lst = List.rev lst in
         let iter (rule, tree) =
-          pf ppf "%a%a\n%!" pp_level level pp_operation rule ;
+          pf ppf "%a%a\n%!" pp_level level pp_operation_with_debug rule ;
           go (succ level) tree in
         List.iter iter lst in
   go 0 tree
 
 let system_long = Size.long
-
-let system_endian = if Sys.big_endian then `BE else `LE
 
 let indirect_1 ?(size = system_long) v =
   let f = function
@@ -94,13 +92,11 @@ let offset = function
   | `Rel offset -> Offset.(Relative (Value offset))
   | `Ind ind -> indirect_0 ind
 
-type k = Ty : ('test, 'v) Ty.t -> k
+type _k = Ty : ('test, 'v) Ty.t -> _k
 
-type t = Test : 'test Test.t -> t
+type _t = Test : 'test Test.t -> _t
 
-type f = Format : 'v fmt -> f
-
-let identity x = x
+type _f = Format : 'v fmt -> _f
 
 let calculation :
     cast:(int64 -> 'v) -> int64 Arithmetic.t option -> 'v Arithmetic.t =
@@ -457,7 +453,7 @@ let rec depth_left = function
 let operation_with_debug ?filename ?line operation =
   { operation; filename; line }
 
-let operation_without_debug { operation; _ } = operation
+let empty = Done
 
 let append tree ?filename ?line:n (line : Parse.line) =
   match line with
@@ -482,3 +478,5 @@ let append tree ?filename ?line:n (line : Parse.line) =
         go 0 tree
       else tree
   | _ -> tree
+
+let operation { operation; _ } = operation
