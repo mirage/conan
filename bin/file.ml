@@ -3,7 +3,7 @@ open Conan_unix
 let ( >>= ) x f = match x with Ok x -> f x | Error err -> Error err
 
 let run ?(fmt = `Usual) filename =
-  run ~database:"unikernel" filename >>= fun result ->
+  run ~database:"examples" filename >>= fun result ->
   match fmt with
   | `Usual -> (
       match Conan.Metadata.output result with
