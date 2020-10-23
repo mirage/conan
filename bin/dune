@@ -1,4 +1,4 @@
 (executable
  (name file)
  (public_name conan.file)
- (libraries conan unix))
+ (libraries conan_unix))
