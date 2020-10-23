@@ -1,3 +1,4 @@
+version: "4d60279-dirty"
 opam-version: "2.0"
 name:         "conan"
 maintainer:   "Romain Calascibetta <romain.calascibetta@gmail.com>"
@@ -12,7 +13,7 @@ description: """Conan is a re-implementation in OCaml of the file command.
 The library is system-agnostic and can be used with MirageOS."""
 
 build:
-  [ [ "dune" "substr" ] {pinned}
+  [ [ "dune" "subst" ] {pinned}
     [ "dune" "build" "-p" name "-j" jobs ]
     [ "dune" "runtest" "-p" name "-j" jobs ] {with-test} ]
 
