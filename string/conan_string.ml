@@ -119,28 +119,6 @@ module Str = struct
     }
 end
 
-let ( / ) = Filename.concat
-
-let fill_tree database =
-  let files = Sys.readdir database in
-  let files = Array.to_list files in
-  let rec go tree = function
-    | [] -> tree
-    | filename :: rest -> (
-        let ic = open_in (database / filename) in
-        let rs = Parse.parse_in_channel ic in
-        close_in ic ;
-        match rs with
-        | Ok lines ->
-            let _, tree =
-              List.fold_left
-                (fun (line, tree) v ->
-                  (succ line, Tree.append ~filename ~line tree v))
-                (1, tree) lines in
-            go tree rest
-        | _ -> go tree rest) in
-  go Tree.empty files
-
 let run ~database:tree contents =
   let db = Hashtbl.create 0x10 in
   Process.fill_db db tree ;
