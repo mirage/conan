@@ -133,18 +133,18 @@ module File = struct
 
   let read_int16_ne t =
     match read t 2 with
-    | Some (off, _, payload) -> Ok (get_uint16 payload off)
-    | None -> Error `Out_of_bound
+    | Some (off, len, payload) when len >= 2 -> Ok (get_uint16 payload off)
+    | _ -> Error `Out_of_bound
 
   let read_int32_ne t =
     match read t 4 with
-    | Some (off, _, payload) -> Ok (get_uint32 payload off)
-    | None -> Error `Out_of_bound
+    | Some (off, len, payload) when len >= 4 -> Ok (get_uint32 payload off)
+    | _ -> Error `Out_of_bound
 
   let read_int64_ne t =
     match read t 8 with
-    | Some (off, _, payload) -> Ok (get_uint64 payload off)
-    | None -> Error `Out_of_bound
+    | Some (off, len, payload) when len >= 8 -> Ok (get_uint64 payload off)
+    | _ -> Error `Out_of_bound
 
   let line t =
     let buf = Buffer.create 0x1000 in
