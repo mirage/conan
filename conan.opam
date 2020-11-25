@@ -20,5 +20,6 @@ depends: [
   "ocaml"       {>= "4.08.0"}
   "re"          {>= "1.9.0"}
   "base-unix"
+  "stdlib-shims"
   "alcotest"    {with-test}
 ]
