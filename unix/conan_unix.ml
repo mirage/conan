@@ -7,8 +7,6 @@ end) =
 struct
   type t
 
-  type +'a s = 'a S.t
-
   external prj : ('a, t) io -> 'a S.t = "%identity"
 
   external inj : 'a S.t -> ('a, t) io = "%identity"
