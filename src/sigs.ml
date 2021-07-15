@@ -10,7 +10,7 @@ type where = SET | CUR | END
 type ('fd, 'error, 's) syscall = {
   seek : 'fd -> int64 -> where -> ((unit, 'error) result, 's) io;
   read : 'fd -> int -> ((string, 'error) result, 's) io;
-  line : 'fd -> ((string, 'error) result, 's) io;
+  line : 'fd -> ((int * int * string, 'error) result, 's) io;
   read_int8 : 'fd -> ((int, 'error) result, 's) io;
   read_int16_ne : 'fd -> ((int, 'error) result, 's) io;
   read_int32_ne : 'fd -> ((int32, 'error) result, 's) io;

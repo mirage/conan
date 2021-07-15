@@ -73,28 +73,28 @@ let invert : type w. w t -> w -> w = function
   | Int64 -> Int64.lognot
 
 let greater : type w. w t -> w -> w -> bool = function
-  | Byte -> ( >)
-  | Short -> ( >)
-  | Int32 -> ( >)
-  | Int64 -> ( >)
+  | Byte -> ( > )
+  | Short -> ( > )
+  | Int32 -> ( > )
+  | Int64 -> ( > )
 
 let lower : type w. w t -> w -> w -> bool = function
-  | Byte -> ( <)
-  | Short -> ( <)
-  | Int32 -> ( <)
-  | Int64 -> ( <)
+  | Byte -> ( < )
+  | Short -> ( < )
+  | Int32 -> ( < )
+  | Int64 -> ( < )
 
 let equal : type w. w t -> w -> w -> bool = function
-  | Byte -> ( =)
-  | Short -> ( =)
-  | Int32 -> ( =)
-  | Int64 -> ( =)
+  | Byte -> ( = )
+  | Short -> ( = )
+  | Int32 -> ( = )
+  | Int64 -> ( = )
 
 let different : type w. w t -> w -> w -> bool = function
-  | Byte -> ( <>)
-  | Short -> ( <>)
-  | Int32 -> ( <>)
-  | Int64 -> ( <>)
+  | Byte -> ( <> )
+  | Short -> ( <> )
+  | Int32 -> ( <> )
+  | Int64 -> ( <> )
 
 let zero : type w. w t -> w = function
   | Byte -> '\000'

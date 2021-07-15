@@ -27,9 +27,9 @@ external get_uint32 : string -> int -> int32 = "%caml_string_get32"
 external get_uint64 : string -> int -> int64 = "%caml_string_get64"
 
 module Str = struct
-  type t = { mutable seek : int; contents : string }
+  type t = { mutable seek : int; contents : string; tmp : bytes }
 
-  let openfile str = { seek = 0; contents = str }
+  let openfile str = { seek = 0; contents = str; tmp = Bytes.create 80 }
 
   let _max_int = Int64.of_int max_int
 
@@ -84,20 +84,20 @@ module Str = struct
     | Some str when String.length str >= 8 -> Ok (get_uint64 str 0)
     | _ -> Error `Out_of_bound
 
+  let rec index str chr pos limit =
+    if pos >= limit then raise Not_found ;
+    if str.[pos] = chr then pos else index str chr (succ pos) limit
+
+  let index str chr ~off ~len = index str chr off (off + len) - off
+
   let line t =
-    let buf = Buffer.create 0x100 in
-    let rec go () =
-      match read t 4096 with
-      | None -> Error `Out_of_bound
-      | Some str ->
-      try
-        let pos = String.index str '\n' in
-        Buffer.add_substring buf str 0 pos ;
-        Ok (Buffer.contents buf)
-      with _ ->
-        Buffer.add_string buf str ;
-        go () in
-    go ()
+    try
+      let len = min (String.length t.contents - t.seek) 80 in
+      let off = t.seek in
+      let pos = index t.contents '\n' ~off ~len in
+      t.seek <- t.seek + (pos - off) ;
+      Ok (off, pos, t.contents)
+    with _ -> Error `Out_of_bound
 
   let read t required =
     match read t required with

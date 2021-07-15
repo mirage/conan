@@ -1,3 +1,5 @@
+let () = Printexc.record_backtrace true
+
 let ( <.> ) f g x = f (g x)
 
 let invalid_arg fmt = Format.kasprintf invalid_arg fmt
@@ -167,7 +169,9 @@ let format_of_ty : type test v. (test, v) Ty.t -> _ -> (v -> 'r, 'r) Fmt.fmt =
     | Quad _ -> with_space (Fmt.of_string ~any message Fmt.(Int64 End))
     | Float _ -> with_space (Fmt.of_string ~any message Fmt.(Float End))
     | Double _ -> with_space (Fmt.of_string ~any message Fmt.(Float End))
-    | Regex _ -> with_space (Fmt.of_string ~any message Fmt.(String End))
+    | Regex _ ->
+        with_space
+          (Fmt.of_string ~any message Fmt.(Any (Pps.ropes_to_string, End)))
     | Pascal_string -> with_space (Fmt.of_string ~any message Fmt.(String End))
     | Date _ -> with_space (Fmt.of_string ~any message Fmt.(String End))
     | Indirect _ -> assert false
@@ -177,6 +181,18 @@ let format_of_ty : type test v. (test, v) Ty.t -> _ -> (v -> 'r, 'r) Fmt.fmt =
         let key = key_of_ty message ty in
         with_space (Fmt.of_string message1 ~any:key Fmt.(Any (key, End)))
     | None -> with_space Fmt.([ ignore ] ^^ of_string ~any message End))
+
+let padding_of_string_format : type test v. (test, v) Ty.t -> _ -> int option =
+ fun ty message ->
+  let fmt = format_of_ty ty message in
+  let rec go : type ty v. int option -> (ty, v) Fmt.fmt -> int option =
+   fun padding fmt ->
+    match (padding, fmt) with
+    | padding, [] -> padding
+    | None, String (Lit (_, n)) :: fmt -> go (Some n) fmt
+    | Some n, String (Lit (_, m)) :: fmt -> go (Some (max n m)) fmt
+    | padding, _ :: fmt -> go padding fmt in
+  go None fmt
 
 (* TODO: "\\0" -> "\000", it's an hack! *)
 let normalize_regex str =
@@ -339,6 +355,10 @@ let rule : Parse.rule -> operation =
     | String c, Search { range; _ } ->
         let pattern = Comparison.value c in
         let range = max range ((Int64.of_int <.> String.length) pattern) in
+        let range =
+          match padding_of_string_format ty message with
+          | Some n -> max range (Int64.of_int n)
+          | None -> range in
         Rule
           ( offset,
             (Ty.with_range range <.> Ty.with_pattern pattern) ty,

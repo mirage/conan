@@ -1,4 +1,4 @@
 (executable
  (name file)
  (public_name conan.file)
- (libraries conan_unix))
+ (libraries mtime mtime.clock.os logs.fmt fmt.tty conan_unix))

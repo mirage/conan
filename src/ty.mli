@@ -14,7 +14,7 @@ type ('test, 'v) t = private
       limit : int64;
       kind : [ `Byte | `Line ];
     }
-      -> (Re.t, string) t
+      -> (Re.t, Ropes.t) t
   | Clear : (clear, clear) t
   | Search : {
       compact_whitespaces : bool;
@@ -26,6 +26,7 @@ type ('test, 'v) t = private
       trim : bool;
       range : int64;
       pattern : string;
+      find : Kmp.finder;
     }
       -> (string, string) t
   | Pascal_string : (string, string) t
@@ -46,6 +47,8 @@ type ('test, 'v) t = private
 
 val pp : Format.formatter -> ('test, 'v) t -> unit
 
+val pp_of_result : ('test, 'v) t -> Format.formatter -> 'v -> unit
+
 val default : (default, default) t
 
 val clear : (clear, clear) t
@@ -55,7 +58,7 @@ val regex :
   ?start:bool ->
   ?limit:int64 ->
   [ `Line | `Byte ] ->
-  (Re.t, string) t
+  (Re.t, Ropes.t) t
 
 val pascal_string : (string, string) t
 

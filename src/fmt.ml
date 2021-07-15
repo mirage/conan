@@ -179,6 +179,21 @@ let pf = Format.fprintf
 
 let strf = Format.asprintf
 
+let padding_and_precision_to_padding :
+    type u v w. (u, v) padding -> (v, w) precision -> (u, w) padding =
+ fun padding precision ->
+  match (padding, precision) with
+  | Nop, Nop -> Nop
+  | Nop, Lit n -> Lit (`Left, n)
+  | Nop, Arg -> Arg `Left
+  | Lit (dir, n), Nop -> Lit (dir, n)
+  | Arg dir, Nop -> Arg dir
+  | Arg _, Arg ->
+      assert false (* [int -> int -> *] can not be reduced to [int -> *] *)
+  | Arg dir, Lit _ -> Arg dir
+  | Lit (dir, _), Arg -> Arg dir
+  | Lit (dir, n), Lit _ -> Lit (dir, n)
+
 let pp_ty : type v r. Format.formatter -> (v, r) ty -> unit =
  fun ppf ty ->
   let rec flat : type v r. _ list -> (v, r) ty -> _ list =
@@ -439,6 +454,9 @@ type s = Sub.t
 
 type 'r ebb = Ebb : ('x, 'r) fmt -> 'r ebb
 
+type ('x, 'r) pdebb =
+  | PdEbb : (_, 'x -> 'a) padding * ('a, 'r) fmt -> ('x, 'r) pdebb
+
 type ('x, 'r) prebb =
   | PrEbb : (_, 'x -> 'a) precision * ('a, 'r) fmt -> ('x, 'r) prebb
 
@@ -453,6 +471,13 @@ let make_prebb : type a b. (a, b) precision -> (_, _) fmt -> (_, _) prebb =
   | Nop -> PrEbb (Nop, fmt)
   | Lit v -> PrEbb (Lit v, fmt)
   | Arg -> PrEbb (Arg, fmt)
+
+let make_pdebb : type a b. (a, b) padding -> (_, _) fmt -> (_, _) pdebb =
+ fun padding fmt ->
+  match padding with
+  | Nop -> PdEbb (Nop, fmt)
+  | Lit (k, v) -> PdEbb (Lit (k, v), fmt)
+  | Arg v -> PdEbb (Arg v, fmt)
 
 let make_pdprebb :
     type a b c d.
@@ -486,7 +511,9 @@ and parse_padding : type x r. any:x Hmap.key -> s -> r ebb =
   let padding, s = span ~sat:is_digit s in
   match (left_padding, zero_padding, to_string padding) with
   | false, false, "" -> parse_precision ~any Nop s
-  | true, false, "" -> parse_precision ~any (Arg `Left) s
+  | true, false, "" ->
+      parse_precision ~any (Lit (`Right, 0)) s
+      (* XXX(dinosaure): check "%-s" please! I don't know what it should do! *)
   | false, true, "" -> parse_precision ~any (Arg `Zero) s
   | false, false, pad ->
       parse_precision ~any (Lit (`Right, int_of_string pad)) s
@@ -522,6 +549,12 @@ and parse_flag :
       let (PdPrEbb (padding, precision, fmt)) =
         make_pdprebb padding precision fmt in
       Ebb (Atom (padding, precision, any) :: fmt)
+  | Some 's' ->
+      let (Ebb fmt) = go ~any (tail s) in
+      let (PdPrEbb (padding, precision, fmt)) =
+        make_pdprebb padding precision fmt in
+      let padding = padding_and_precision_to_padding padding precision in
+      Ebb (String padding :: fmt)
   | Some chr -> invalid_arg "Invalid formatter %c" chr
 
 and go : type x r. any:x Hmap.key -> s -> r ebb =

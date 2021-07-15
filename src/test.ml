@@ -72,9 +72,10 @@ let process : type test v. (test, v) Ty.t -> test t -> v -> v option =
       let re = Comparison.value c in
       let re = if case_insensitive then Re.no_case re else re in
       let regexp = Re.compile re in
-      match Array.to_list (Re.Group.all (Re.exec regexp a)) with
+      let str, pos, len = Ropes.to_string a in
+      match Array.to_list (Re.Group.all (Re.exec ~pos ~len regexp str)) with
       | [] -> None
-      | a :: _ -> Some a
+      | a :: _ -> Some (Ropes.of_string a)
       | exception Not_found -> None
       (* TODO: process the comparison. *))
   | Pascal_string, Numeric _ -> .

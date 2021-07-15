@@ -23,8 +23,8 @@ let bitwise_xor v = Xor v
 let of_string ~with_val = function
   | "=" -> Equal with_val
   | "!" -> Different with_val
-  | "<" -> Greater with_val
-  | ">" -> Lower with_val
+  | "<" -> Lower with_val
+  | ">" -> Greater with_val
   | "&" -> And with_val
   | "^" -> Xor with_val
   | v -> invalid_arg "Invalid comparison operation: %S" v

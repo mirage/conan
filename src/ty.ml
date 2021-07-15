@@ -15,7 +15,7 @@ type ('test, 'v) t =
       (* default: 8KiB *)
       kind : [ `Byte | `Line ];
     }
-      -> (Re.t, string) t
+      -> (Re.t, Ropes.t) t
   | Clear : (clear, clear) t
   | Search : {
       compact_whitespaces : bool;
@@ -27,6 +27,7 @@ type ('test, 'v) t =
       trim : bool;
       range : int64;
       pattern : string;
+      find : Kmp.finder;
     }
       -> (string, string) t
   | Pascal_string (* uh?! *) : (string, string) t
@@ -72,6 +73,26 @@ let pp_endian ppf = function
 
 let pp_date_size ppf = function `s32 -> () | `s64 -> pf ppf "q"
 
+let pp_of_result : type test v. (test, v) t -> Format.formatter -> v -> unit =
+  function
+  | Default -> fun ppf Default -> Format.fprintf ppf "x"
+  | Regex _ ->
+      fun ppf ropes ->
+        let str, off, len = Ropes.to_string ropes in
+        Format.fprintf ppf "%S" (String.sub str off len)
+  | Clear -> fun ppf Clear -> Format.fprintf ppf "clear"
+  | Search _ -> fun ppf v -> Format.fprintf ppf "%S" v
+  | Pascal_string -> fun ppf v -> Format.fprintf ppf "%S" v
+  | Unicode_string _ -> fun ppf v -> Format.fprintf ppf "%S" v
+  | Byte _ -> fun ppf chr -> Format.fprintf ppf "%S" (String.make 1 chr)
+  | Short _ -> fun ppf v -> Format.fprintf ppf "%d" v
+  | Long _ -> fun ppf v -> Format.fprintf ppf "%ld" v
+  | Quad _ -> fun ppf v -> Format.fprintf ppf "%Ld" v
+  | Float _ -> fun ppf v -> Format.fprintf ppf "%f" v
+  | Double _ -> fun ppf v -> Format.fprintf ppf "%f" v
+  | Indirect _ -> fun ppf _ -> Format.fprintf ppf "#indirection"
+  | Date _ -> fun ppf v -> Format.fprintf ppf "%S" v
+
 let pp : type test v. Format.formatter -> (test, v) t -> unit =
  fun ppf -> function
   | Default -> pf ppf "default"
@@ -95,6 +116,7 @@ let pp : type test v. Format.formatter -> (test, v) t -> unit =
         trim = false;
         range = 0L;
         pattern = "";
+        find = _;
       } ->
       pf ppf "search"
   | Search
@@ -108,6 +130,7 @@ let pp : type test v. Format.formatter -> (test, v) t -> unit =
         trim;
         range;
         pattern = _;
+        find = _;
       } ->
       pf ppf "search/%a%a%a%a%a%a%a/%Ld" (pp_flag 'W') compact_whitespaces
         (pp_flag 'w') optional_blank (pp_flag 'c') lower_case_insensitive
@@ -173,6 +196,7 @@ let search ?(compact_whitespaces = false) ?(optional_blank = false)
       trim;
       range;
       pattern;
+      find = Kmp.find_one ~pattern;
     }
 
 let with_range range = function Search v -> Search { v with range } | t -> t
@@ -304,7 +328,7 @@ let process :
   | Search { pattern = ""; _ } -> (return <.> ok) ""
   | Search
       {
-        pattern;
+        pattern = _;
         compact_whitespaces = _;
         optional_blank = _;
         lower_case_insensitive = _;
@@ -313,12 +337,13 @@ let process :
         binary = _;
         trim = _;
         range;
+        find;
       } -> (
       let get fd ~pos =
         syscall.seek fd (Int64.add abs_offset pos) SET >?= fun () ->
         syscall.read_int8 fd >?= fun code -> (return <.> ok <.> Char.chr) code
       in
-      Bm.find_all scheduler ~get ~ln:range fd ~pattern
+      find.Kmp.f scheduler ~get ~ln:range fd
       >|= reword_error (fun err -> `Syscall err)
       >?= fun results ->
       let results = List.sort Int64.compare results in
@@ -328,19 +353,26 @@ let process :
           syscall.seek fd (Int64.add abs_offset rel_offset) SET
           >|= reword_error (fun err -> `Syscall err)
           >?= fun () ->
-          syscall.read fd (String.length pattern)
+          syscall.read fd (Int64.to_int range)
           >|= reword_error (fun err -> `Syscall err))
   | Regex { kind; limit; _ } -> (
       match kind with
       | `Byte ->
           syscall.read fd (Int64.to_int limit)
           >|= reword_error (fun err -> `Syscall err)
+          >?= fun raw -> return (Ok (Ropes.of_string raw))
       | `Line ->
           let rec go acc = function
-            | 0 -> (return <.> ok <.> String.concat newline <.> List.rev) acc
+            | 0 ->
+                let ropes =
+                  Ropes.append
+                    (Ropes.concat ~sep:newline acc)
+                    (Ropes.of_string newline) in
+                return (Ok ropes)
             | n ->
                 syscall.line fd >|= reword_error (fun err -> `Syscall err)
-                >?= fun line -> go (line :: acc) (pred n) in
+                >?= fun (off, len, line) ->
+                go (Ropes.of_string ~off ~len line :: acc) (pred n) in
           go [] (max 0 (Int64.to_int limit)))
   | Byte ({ unsigned }, c) ->
       let size, converter, w = process_numeric ty in

@@ -1,3 +1,5 @@
+module Log = (val Logs.src_log (Logs.Src.create "conan-process"))
+
 let invalid_arg fmt = Format.kasprintf invalid_arg fmt
 
 let ( <.> ) f g x = f (g x)
@@ -35,6 +37,8 @@ let process :
       s )
     io =
  fun ({ bind; return } as scheduler) syscall fd abs_offset metadata operation ->
+  Log.debug (fun m -> m "Process the operation: %a" Tree.pp_operation operation) ;
+  Log.debug (fun m -> m "Current metadata: %a" Metadata.pp metadata) ;
   match operation with
   | Tree.Name _ -> return (Error `No_process)
   | Tree.Use _ -> return (Error `No_process)
@@ -48,8 +52,11 @@ let process :
       >|= reword_error (fun err -> `Syscall err)
       >?= fun abs_offset ->
       Ty.process scheduler syscall fd abs_offset ty >?= fun v ->
+      Log.debug (fun m -> m "Test %a %a." Test.pp test (Ty.pp_of_result ty) v) ;
       match Test.process ty test v with
       | Some v ->
+          let pp = Ty.pp_of_result ty in
+          Log.debug (fun m -> m "Test pass with %a!" pp v) ;
           let metadata = process_fmt metadata ty fmt v in
           return (Ok (abs_offset, metadata))
       | None -> return (Error `Invalid_test))

@@ -87,11 +87,15 @@ and int = parse
   | _ { Error `Malformed }
 
 and string buf = parse
-  | '\\' ([ '\\' '\'' '\"' 'n' 't' 'b' 'r' ' ' '^' ] as chr)
+  | '\\' ([ '\\' '\'' '\"' 'n' 't' 'b' 'r' ' ' '^' '<' '>' ] as chr)
+      (* XXX(dinosaure): I added "<" and ">". It seems that libmagic escape them too. *)
       { add_escaped_char lexbuf buf (char_for_backslash chr)
       ; string buf lexbuf }
   | '\\' [ '0'-'7' ] [ '0'-'7' ] [ '0'-'7' ]
       { add_escaped_char lexbuf buf (char_for_octal_code lexbuf 1)
+      ; string buf lexbuf }
+  | '\\' '0'
+      { store_string_char lexbuf buf '\000'
       ; string buf lexbuf }
   | '\\' 'o' [ '0'-'7' ] [ '0'-'7' ] [ '0'-'7' ]
       { add_escaped_char lexbuf buf (char_for_octal_code lexbuf 2)
