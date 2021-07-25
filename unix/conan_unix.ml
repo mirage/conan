@@ -213,12 +213,11 @@ let fill_tree database =
 
 let run ~database filename =
   let tree = fill_tree database in
-  let db = Hashtbl.create 0x10 in
-  Process.fill_db db tree ;
+  let database = Process.database ~tree in
   let result =
     let fd = File.openfile filename in
     let rs =
-      Unix_scheduler.prj (Process.descending_walk ~db unix File.syscall fd tree)
+      Unix_scheduler.prj (Process.descending_walk unix File.syscall fd database)
     in
     File.close fd ;
     rs in
