@@ -145,10 +145,9 @@ let descending_walk ({ bind; return } as scheduler) syscall db fd abs_offset
   in
   go ~level:0 syscall abs_offset metadata root
 
-let descending_walk ?(db = Hashtbl.create 0x10) scheduler syscall fd tree =
-  descending_walk scheduler syscall db fd 0L Metadata.empty tree
+type database = (string, Tree.t) Hashtbl.t * Tree.t
 
-let fill_db db = function
+let rec fill_db db = function
   | Tree.Done -> ()
   | Tree.Node lst ->
       let rec go = function
@@ -157,9 +156,20 @@ let fill_db db = function
             (* XXX(dinosaure): /offset/ name value
                should appear only at the first level. *)
             Hashtbl.add db name tree ;
+            fill_db db tree ;
             go rest
-        | _ :: rest -> go rest in
+        | (_, tree) :: rest ->
+            fill_db db tree ;
+            go rest in
       go (List.rev_map (fun (elt, sub) -> (Tree.operation elt, sub)) lst)
+
+let database ~tree : database =
+  let db = Hashtbl.create 0x10 in
+  fill_db db tree ;
+  (db, tree)
+
+let descending_walk scheduler syscall fd (db, tree) =
+  descending_walk scheduler syscall db fd 0L Metadata.empty tree
 
 let rec ascending_walk ({ bind; return } as scheduler) syscall db fd results
     queue =

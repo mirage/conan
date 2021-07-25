@@ -1,0 +1,16 @@
+(executable
+ (name fuzz)
+ (modules fuzz)
+ (libraries fmt crowbar conan.string))
+
+(rule
+ (alias runtest)
+ (deps
+  fuzz.exe
+  (source_tree ../examples)
+  (env_var CONAN_DATABASE))
+ (action
+  (setenv
+   CONAN_DATABASE
+   ../examples
+   (run %{exe:fuzz.exe}))))

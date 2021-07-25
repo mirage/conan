@@ -1,5 +1,4 @@
-open Conan
-open Sigs
+open Conan.Sigs
 
 module Make (S : sig
   type +'a t
@@ -41,19 +40,19 @@ module Str = struct
     else
       let offset = Int64.to_int offset in
       match seek with
-      | Sigs.SET ->
-          if offset < String.length t.contents
+      | Conan.Sigs.SET ->
+          if offset >= 0 && offset < String.length t.contents
           then (
             t.seek <- offset ;
             Ok ())
           else Error `Out_of_bound
-      | Sigs.CUR ->
+      | Conan.Sigs.CUR ->
           if t.seek + offset < String.length t.contents
           then (
             t.seek <- t.seek + offset ;
             Ok ())
           else Error `Out_of_bound
-      | Sigs.END ->
+      | Conan.Sigs.END ->
           if String.length t.contents + offset > 0
           then (
             t.seek <- String.length t.contents + offset ;
@@ -62,7 +61,7 @@ module Str = struct
 
   let read t required =
     let len = min required (String.length t.contents - t.seek) in
-    if len = 0 then None else Some (String.sub t.contents t.seek len)
+    if len <= 0 then None else Some (String.sub t.contents t.seek len)
 
   let read_int8 t =
     match read t 1 with
@@ -117,13 +116,13 @@ module Str = struct
     }
 end
 
-let run ~database:tree contents =
-  let db = Hashtbl.create 0x10 in
-  Process.fill_db db tree ;
+open Conan
+
+let run ~database contents =
   let result =
     let fd = Str.openfile contents in
     let rs =
-      Caml_scheduler.prj (Process.descending_walk ~db caml Str.syscall fd tree)
+      Caml_scheduler.prj (Process.descending_walk caml Str.syscall fd database)
     in
     rs in
   Ok result

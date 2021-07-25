@@ -1,4 +1,4 @@
 val run :
-  database:Conan.Tree.t ->
+  database:Conan.Process.database ->
   string ->
   (Conan.Metadata.t, [> `Msg of string ]) result

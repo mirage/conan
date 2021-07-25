@@ -1,3 +1,2 @@
-(lang dune 2.4)
+(lang dune 2.9)
 (name conan)
-(version 4d60279-dirty)
