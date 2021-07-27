@@ -213,6 +213,17 @@ let fill_tree database =
 
 let database ~directory = fill_tree directory
 
+let run_with_tree tree filename =
+  let database = Process.database ~tree in
+  let result =
+    let fd = File.openfile filename in
+    let rs =
+      Unix_scheduler.prj (Process.descending_walk unix File.syscall fd database)
+    in
+    File.close fd ;
+    rs in
+  Ok result
+
 let run ~database filename =
   let tree = fill_tree database in
   let database = Process.database ~tree in

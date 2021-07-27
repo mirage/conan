@@ -544,6 +544,13 @@ let append tree ?filename ?line:n (line : Parse.line) =
       else tree
   | _ -> tree
 
+let merge a b =
+  match (a, b) with
+  | Done, Done -> Done
+  | Done, Node _ -> b
+  | Node _, Done -> a
+  | Node a, Node b -> Node (a @ b)
+
 let operation { operation; _ } = operation
 
 module Unsafe = struct

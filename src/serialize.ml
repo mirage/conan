@@ -1,5 +1,7 @@
 let cut ppf _ = Format.pp_print_cut ppf ()
 
+let fmt fmt ppf = Format.fprintf ppf fmt
+
 let char ppf chr = Format.fprintf ppf "'\\%03d'" (Char.code chr)
 
 let int ppf n =

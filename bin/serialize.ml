@@ -1,7 +1,65 @@
+let ( / ) = Filename.concat
+
+let ocamlify s =
+  let b = Buffer.create (String.length s) in
+  String.iter
+    (function
+      | ('a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_') as c -> Buffer.add_char b c
+      | '-' | '.' -> Buffer.add_char b '_'
+      | _ -> ())
+    s ;
+  let s' = Buffer.contents b in
+  if String.length s' = 0 || ('0' <= s'.[0] && s'.[0] <= '9')
+  then raise (Invalid_argument s) ;
+  s'
+
+let reserved_keyword = [ ("virtual", "virtual'") ]
+
+let ocamlify s =
+  match List.assoc s reserved_keyword with
+  | s' -> s'
+  | exception Not_found -> ocamlify s
+
+let serialize directory filename =
+  let ic = open_in (directory / filename) in
+  let rs = Conan.Parse.parse_in_channel ic in
+  close_in ic ;
+  match rs with
+  | Ok lines ->
+      let _, tree =
+        List.fold_left
+          (fun (line, tree) v ->
+            (succ line, Conan.Tree.append ~filename ~line tree v))
+          (1, Conan.Tree.empty) lines in
+      let filename' = ocamlify filename ^ ".ml" in
+      let oc = open_out (directory / filename') in
+      let ppf = Format.formatter_of_out_channel oc in
+      Format.fprintf ppf "let tree = @[<2>%a@]\n%!" Conan.Tree.serialize tree ;
+      close_out oc
+  | Error _err ->
+      let filename' = ocamlify filename ^ ".ml" in
+      let oc = open_out (directory / filename') in
+      let ppf = Format.formatter_of_out_channel oc in
+      Format.fprintf ppf "let tree = Conan.Tree.empty\n%!" ;
+      close_out oc
+
 let run directory =
-  let tree = Conan_unix.database ~directory in
-  Conan.Tree.serialize Format.std_formatter tree ;
-  Format.printf "%!"
+  let files = Sys.readdir directory in
+  let files = Array.to_list files in
+  List.iter (serialize directory) files ;
+  let files = List.map ocamlify files in
+  let oc = open_out (directory / "conan_database.ml") in
+  let ppf = Format.formatter_of_out_channel oc in
+  List.iter
+    (fun filename ->
+      Format.fprintf ppf "let %s = %s.tree\n%!" filename
+        (String.capitalize_ascii filename))
+    files ;
+  Format.fprintf ppf
+    "let tree = List.fold_left Conan.Tree.merge Conan.Tree.empty @[%a@]\n%!"
+    Conan.Serialize.(list (fmt "%s"))
+    files ;
+  close_out oc
 
 let directory = ref None
 

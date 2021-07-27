@@ -1,5 +1,6 @@
 module Arithmetic = Arithmetic
 module Comparison = Comparison
+module Serialize = Serialize
 module Metadata = Metadata
 module Process = Process
 module Integer = Integer

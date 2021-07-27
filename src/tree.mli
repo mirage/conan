@@ -24,6 +24,8 @@ val empty : t
 
 val append : t -> ?filename:string -> ?line:int -> Parse.line -> t
 
+val merge : t -> t -> t
+
 (** / *)
 
 module Unsafe : sig

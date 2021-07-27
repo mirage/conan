@@ -10,3 +10,8 @@
   (source_tree ../examples))
  (action
   (run %{test} --color=always)))
+
+(cram
+ (deps
+  (source_tree ../examples)
+  %{bin:conan.serialize}))
