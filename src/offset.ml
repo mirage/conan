@@ -9,6 +9,27 @@ type t =
   | Read of t * Size.t
   | Calculation of t * t Arithmetic.t
 
+let rec serialize ppf = function
+  | Relative v ->
+      Format.fprintf ppf "Conan.Offset.Relative@ @[%a@]"
+        (Serialize.parens serialize)
+        v
+  | Absolute v ->
+      Format.fprintf ppf "Conan.Offset.Absolute@ @[%a@]"
+        (Serialize.parens serialize)
+        v
+  | Value v -> Format.fprintf ppf "Conan.Offset.Value@ %a" Serialize.int64 v
+  | Read (v, s) ->
+      Format.fprintf ppf "Conan.Offset.Read@ @[%a@]"
+        (Serialize.pair (Serialize.parens serialize) Size.serialize)
+        (v, s)
+  | Calculation (v, arithmetic) ->
+      Format.fprintf ppf "Conan.Offset.Calculation@ @[%a@]"
+        (Serialize.pair
+           (Serialize.parens serialize)
+           (Arithmetic.serialize (Serialize.parens serialize)))
+        (v, arithmetic)
+
 let pf = Format.fprintf
 
 let rec pp ppf = function

@@ -11,6 +11,39 @@ type 'a t =
   | Regex : Re.t Comparison.t -> Re.t t
   | Date : Ptime.Span.t Comparison.t -> Ptime.t t
 
+let serialize : type a. Format.formatter -> a t -> unit =
+ fun ppf -> function
+  | True -> Format.pp_print_string ppf "Conan.Test.always_true"
+  | False -> Format.pp_print_string ppf "Conan.Test.always_false"
+  | Numeric (n, comparison) ->
+      Format.fprintf ppf "@[<2>Conan.Test.numeric@ %a@ %a@]" Integer.serialize n
+        Serialize.(parens (Comparison.serialize (Integer.serializer_of n)))
+        comparison
+  | Float comparison ->
+      Format.fprintf ppf "@[<2>Conan.Test.float@ %a@]"
+        Serialize.(parens (Comparison.serialize float))
+        comparison
+  | Unicode_string comparison ->
+      Format.fprintf ppf "@[<2>Conan.Test.str_unicode@ %a@]"
+        Serialize.(parens (Comparison.serialize string))
+        comparison
+  | String comparison ->
+      Format.fprintf ppf "@[<2>Conan.Test.string@ %a@]"
+        Serialize.(parens (Comparison.serialize string))
+        comparison
+  | Length comparison ->
+      Format.fprintf ppf "@[<2>Conan.Test.length@ %a@]"
+        Serialize.(parens (Comparison.serialize int))
+        comparison
+  | Regex comparison ->
+      Format.fprintf ppf "@[<2>Conan.Test.regex@ %a@]"
+        Serialize.(parens (Comparison.serialize (parens re)))
+        comparison
+  | Date comparison ->
+      Format.fprintf ppf "@[<2>Conan.Test.date@ %a@]"
+        Serialize.(parens (Comparison.serialize (parens ptime_span)))
+        comparison
+
 let pf = Format.fprintf
 
 let pp_int ppf = pf ppf "%d"

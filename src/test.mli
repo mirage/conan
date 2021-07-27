@@ -9,6 +9,8 @@ type 'a t = private
   | Regex : Re.t Comparison.t -> Re.t t
   | Date : Ptime.Span.t Comparison.t -> Ptime.t t
 
+val serialize : Format.formatter -> 'a t -> unit
+
 val pp : Format.formatter -> 'a t -> unit
 
 val always_true : _ t

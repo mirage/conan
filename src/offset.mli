@@ -5,6 +5,8 @@ type t =
   | Read of t * Size.t
   | Calculation of t * t Arithmetic.t
 
+val serialize : Format.formatter -> t -> unit
+
 val pp : Format.formatter -> t -> unit
 
 open Sigs

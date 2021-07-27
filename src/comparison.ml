@@ -8,6 +8,16 @@ type 'a t =
   | And of 'a
   | Xor of 'a
 
+let serialize pp ppf = function
+  | Equal v -> Format.fprintf ppf "@[<2>Conan.Comparison.equal_to@ %a@]" pp v
+  | Different v ->
+      Format.fprintf ppf "@[<2>Conan.Comparison.different_to@ %a@]" pp v
+  | Greater v ->
+      Format.fprintf ppf "@[<2>Conan.Comparison.greater_than@ %a@]" pp v
+  | Lower v -> Format.fprintf ppf "@[<2>Conan.Comparison.lower_than@ %a@]" pp v
+  | And v -> Format.fprintf ppf "@[<2>Conan.Comparison.bitwise_and@ %a@]" pp v
+  | Xor v -> Format.fprintf ppf "@[<2>Conan.Comparison.bitwise_xor@ %a@]" pp v
+
 let equal_to v = Equal v
 
 let different_to v = Different v

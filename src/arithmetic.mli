@@ -9,6 +9,9 @@ type 'a t =
   | Bitwise_xor of 'a
   | Bitwise_or of 'a
 
+val serialize :
+  (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
+
 val pp : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
 
 val map : f:('a -> 'b) -> 'a t -> 'b t

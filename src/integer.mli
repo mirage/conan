@@ -4,6 +4,10 @@ type 'a t = private
   | Int32 : int32 t
   | Int64 : int64 t
 
+val serialize : Format.formatter -> 'a t -> unit
+
+val serializer_of : 'a t -> Format.formatter -> 'a -> unit
+
 val byte : char t
 
 val short : int t

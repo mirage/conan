@@ -1,4 +1,11 @@
 (executable
  (name file)
+ (modules file)
  (public_name conan.file)
  (libraries mtime mtime.clock.os logs.fmt fmt.tty conan_unix))
+
+(executable
+ (name serialize)
+ (modules serialize)
+ (public_name conan.serialize)
+ (libraries conan_unix))

@@ -211,6 +211,8 @@ let fill_tree database =
         | _ -> go tree rest) in
   go Tree.empty files
 
+let database ~directory = fill_tree directory
+
 let run ~database filename =
   let tree = fill_tree database in
   let database = Process.database ~tree in

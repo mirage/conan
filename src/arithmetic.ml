@@ -11,6 +11,23 @@ type 'a t =
   | Bitwise_xor of 'a
   | Bitwise_or of 'a
 
+let rec serialize pp ppf = function
+  | Invert t ->
+      Format.fprintf ppf "Conan.Arithmetic.Invert@ @[%a@]"
+        (Serialize.parens (serialize pp))
+        t
+  | Add v -> Format.fprintf ppf "Conan.Arithmetic.Add@ @[%a@]" pp v
+  | Sub v -> Format.fprintf ppf "Conan.Arithmetic.Sub@ @[%a@]" pp v
+  | Mul v -> Format.fprintf ppf "Conan.Arithmetic.Mul@ @[%a@]" pp v
+  | Div v -> Format.fprintf ppf "Conan.Arithmetic.Div@ @[%a@]" pp v
+  | Mod v -> Format.fprintf ppf "Conan.Arithmetic.Mod@ @[%a@]" pp v
+  | Bitwise_and v ->
+      Format.fprintf ppf "Conan.Arithmetic.Bitwise_and@ @[%a@]" pp v
+  | Bitwise_xor v ->
+      Format.fprintf ppf "Conan.Arithmetic.Bitwise_xor@ @[%a@]" pp v
+  | Bitwise_or v ->
+      Format.fprintf ppf "Conan.Arithmetic.Bitwise_or@ @[%a@]" pp v
+
 let pf = Format.fprintf
 
 let rec pp pp_val ppf = function

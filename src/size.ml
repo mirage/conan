@@ -16,6 +16,18 @@ type t =
   | Lequad
   | Bequad
 
+let serialize ppf = function
+  | Byte -> Format.pp_print_string ppf "Conan.Size.byte"
+  | Leshort -> Format.pp_print_string ppf "Conan.Size.leshort"
+  | Beshort -> Format.pp_print_string ppf "Conan.Size.beshort"
+  | Lelong -> Format.pp_print_string ppf "Conan.Size.lelong"
+  | Belong -> Format.pp_print_string ppf "Conan.Size.belong"
+  | Melong -> Format.pp_print_string ppf "Conan.Size.melong"
+  | Leid3 -> Format.pp_print_string ppf "Conan.Size.leid3"
+  | Beid3 -> Format.pp_print_string ppf "Conan.Size.beid3"
+  | Lequad -> Format.pp_print_string ppf "Conan.Size.lequad"
+  | Bequad -> Format.pp_print_string ppf "Conan.Size.bequad"
+
 let byte = Byte
 
 let leshort = Leshort

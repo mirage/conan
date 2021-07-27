@@ -45,6 +45,51 @@ let pp_operation_with_debug ppf t =
 
 type t = Node of (elt * t) list | Done
 
+let serialize_message ppf = function
+  | `No_space str -> Format.fprintf ppf "`No_space %S" str
+  | `Space str -> Format.fprintf ppf "`Space %S" str
+
+let serialize_operation ppf = function
+  | Rule (offset, ty, test, { str; _ }) ->
+      Format.fprintf ppf
+        "let ty = @[<hov>%a@] in@ @[<2>Conan.Tree.Unsafe.rule@ ~offset:@[%a@]@ \
+         ty@ @[%a@]@ @[%a@]@]"
+        Ty.serialize ty
+        Serialize.(parens Offset.serialize)
+        offset
+        Serialize.(parens Test.serialize)
+        test
+        Serialize.(parens serialize_message)
+        str
+  | Name (offset, name) ->
+      Format.fprintf ppf "@[<2>Conan.Tree.Unsafe.name@ ~offset:@[%a@]@ %S@]"
+        Serialize.(parens Offset.serialize)
+        offset name
+  | Use { offset; invert; name } ->
+      Format.fprintf ppf
+        "@[<2>Conan.Tree.Unsafe.use@ ~offset:@[%a@]@ ~invert:%b@ %S@]"
+        Serialize.(parens Offset.serialize)
+        offset invert name
+  | MIME str -> Format.fprintf ppf "@[<2>Conan.Tree.Unsafe.mime@ %S@]" str
+
+let serialize_elt ppf { operation; filename; line } =
+  Format.fprintf ppf
+    "@[<2>Conan.Tree.Unsafe.elt@ ?filename:@[%a@]@ ?line:@[%a@]@ @[%a@]@]"
+    Serialize.(parens (option string))
+    filename
+    Serialize.(parens (option int))
+    line
+    Serialize.(parens serialize_operation)
+    operation
+
+let rec serialize ppf = function
+  | Done -> Format.fprintf ppf "Conan.Tree.Unsafe.leaf"
+  | Node lst ->
+      let serialize = Serialize.(pair serialize_elt serialize) in
+      Format.fprintf ppf "@[<2>Conan.Tree.Unsafe.node@ %a@]"
+        Serialize.(list serialize)
+        lst
+
 let pp_level ppf n =
   let rec go = function
     | 0 -> ()
@@ -500,3 +545,24 @@ let append tree ?filename ?line:n (line : Parse.line) =
   | _ -> tree
 
 let operation { operation; _ } = operation
+
+module Unsafe = struct
+  let rule ~offset ty test message =
+    Rule
+      ( offset,
+        ty,
+        test,
+        { fmt = (fun () -> format_of_ty ty message); str = message } )
+
+  let name ~offset name = Name (offset, name)
+
+  let use ~offset ~invert name = Use { offset; invert; name }
+
+  let mime str = MIME str
+
+  let elt ?filename ?line operation = { operation; filename; line }
+
+  let node lst = Node lst
+
+  let leaf = Done
+end

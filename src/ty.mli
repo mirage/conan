@@ -45,6 +45,8 @@ type ('test, 'v) t = private
       * endian
       -> (Ptime.t, string) t
 
+val serialize : Format.formatter -> ('test, 'v) t -> unit
+
 val pp : Format.formatter -> ('test, 'v) t -> unit
 
 val pp_of_result : ('test, 'v) t -> Format.formatter -> 'v -> unit

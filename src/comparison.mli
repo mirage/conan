@@ -1,5 +1,8 @@
 type 'a t
 
+val serialize :
+  (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
+
 val pp : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
 
 val of_string : with_val:'a -> string -> 'a t

@@ -1,5 +1,18 @@
 type 'a t = Byte : char t | Short : int t | Int32 : int32 t | Int64 : int64 t
 
+let serialize : type a. Format.formatter -> a t -> unit =
+ fun ppf -> function
+  | Byte -> Format.pp_print_string ppf "Conan.Integer.byte"
+  | Short -> Format.pp_print_string ppf "Conan.Integer.short"
+  | Int32 -> Format.pp_print_string ppf "Conan.Integer.int32"
+  | Int64 -> Format.pp_print_string ppf "Conan.Integer.int64"
+
+let serializer_of : type a. a t -> Format.formatter -> a -> unit = function
+  | Byte -> Serialize.char
+  | Short -> Serialize.int
+  | Int32 -> Serialize.int32
+  | Int64 -> Serialize.int64
+
 let byte = Byte
 
 let short = Short

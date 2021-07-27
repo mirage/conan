@@ -46,6 +46,110 @@ type ('test, 'v) t =
       * endian
       -> (Ptime.t, string) t
 
+let serialize_endian ppf = function
+  | `BE -> Format.pp_print_string ppf "`BE"
+  | `LE -> Format.pp_print_string ppf "`LE"
+  | `ME -> Format.pp_print_string ppf "`ME"
+  | `NE -> Format.pp_print_string ppf "`NE"
+
+let serialize : type test v. Format.formatter -> (test, v) t -> unit =
+ fun ppf -> function
+  | Default -> Format.pp_print_string ppf "Conan.Ty.default"
+  | Regex { case_insensitive; start; limit; kind } ->
+      let serialize_kind ppf = function
+        | `Byte -> Format.fprintf ppf "`Byte"
+        | `Line -> Format.fprintf ppf "`Line" in
+      Format.fprintf ppf
+        "@[<2>Conan.Ty.regex@ ~case_insensitive:%b ~start:%b@ ~limit:%LdL@ %a@]"
+        case_insensitive start limit serialize_kind kind
+  | Clear -> Format.pp_print_string ppf "Conan.Ty.clear"
+  | Search
+      {
+        compact_whitespaces;
+        optional_blank;
+        lower_case_insensitive;
+        upper_case_insensitive;
+        text;
+        binary;
+        trim;
+        range;
+        pattern;
+        find = _;
+      } ->
+      let serialize_type ppf () =
+        match (text, binary) with
+        | true, false -> Format.pp_print_string ppf "`Text"
+        | false, true -> Format.pp_print_string ppf "`Binary"
+        | _ -> assert false in
+      Format.fprintf ppf
+        "@[<2>Conan.Ty.search@ ~compact_whitespaces:%b@ ~optional_blank:%b@ \
+         ~lower_case_insensitive:%b@ ~upper_case_insensitive:%b@ @[%a@]@ \
+         ~trim:%b@ %LdL@ ~pattern:%S@]"
+        compact_whitespaces optional_blank lower_case_insensitive
+        upper_case_insensitive serialize_type () trim range pattern
+  | Pascal_string -> Format.pp_print_string ppf "Conan.Ty.pascal_string"
+  | Unicode_string `BE -> Format.fprintf ppf "@[<2>Conan.Ty.str_unicode@ `BE@]"
+  | Unicode_string `LE -> Format.fprintf ppf "@[<2>Conan.Ty.str_unicode@ `LE@]"
+  | Byte ({ unsigned }, arithmetic) ->
+      Format.fprintf ppf
+        "@[<2>Conan.Ty.numeric@ ~unsigned:%b@ Conan.Integer.byte@ @[%a@]@]"
+        unsigned
+        Serialize.(parens (Arithmetic.serialize char))
+        arithmetic
+  | Short ({ unsigned }, arithmetic, endian) ->
+      let serialize_endian ppf = function
+        | `BE -> Format.pp_print_string ppf "`BE"
+        | `LE -> Format.pp_print_string ppf "`LE"
+        | `NE -> Format.pp_print_string ppf "`NE" in
+      Format.fprintf ppf
+        "@[<2>Conan.Ty.numeric@ ~unsigned:%b@ ~endian:%a@ Conan.Integer.short \
+         @[%a@]@]"
+        unsigned serialize_endian endian
+        Serialize.(parens (Arithmetic.serialize int))
+        arithmetic
+  | Long ({ unsigned }, arithmetic, endian) ->
+      Format.fprintf ppf
+        "@[<2>Conan.Ty.numeric@ ~unsigned:%b@ ~endian:%a@ Conan.Integer.int32 \
+         @[%a@]@]"
+        unsigned serialize_endian endian
+        Serialize.(parens (Arithmetic.serialize int32))
+        arithmetic
+  | Quad ({ unsigned }, arithmetic, endian) ->
+      Format.fprintf ppf
+        "@[<2>Conan.Ty.numeric@ ~unsigned:%b@ ~endian:%a@ Conan.Integer.int64 \
+         @[%a@]@]"
+        unsigned serialize_endian endian
+        Serialize.(parens (Arithmetic.serialize int64))
+        arithmetic
+  | Float ({ unsigned }, arithmetic, endian) ->
+      Format.fprintf ppf
+        "@[<2>Conan.Ty.float@ ~unsigned:%b@ ~endian:%a@ @[%a@]@]" unsigned
+        serialize_endian endian
+        Serialize.(parens (Arithmetic.serialize float))
+        arithmetic
+  | Double ({ unsigned }, arithmetic, endian) ->
+      Format.fprintf ppf
+        "@[<2>Conan.Ty.double@ ~unsigned:%b@ ~endian:%a@ @[%a@]@]" unsigned
+        serialize_endian endian
+        Serialize.(parens (Arithmetic.serialize float))
+        arithmetic
+  | Indirect `Rel -> Format.fprintf ppf "@[<2>Conan.Ty.indirect@ `Rel@]"
+  | Indirect `Abs -> Format.fprintf ppf "@[<2>Conan.Ty.indirect@ `Abs@]"
+  | Date (zone, size, arithmetic, endian) ->
+      let serialize_type ppf () =
+        match (zone, size) with
+        | `UTC, `s32 -> Format.pp_print_string ppf "`Date"
+        | `Local, `s32 -> Format.pp_print_string ppf "`Ldate"
+        | `UTC, `s64 -> Format.pp_print_string ppf "`Qdate"
+        | `Local, `s64 -> Format.pp_print_string ppf "`Qldate"
+        | `Window, `s64 -> Format.pp_print_string ppf "`Qwdate"
+        | `Window, `s32 -> assert false in
+      Format.fprintf ppf
+        "@[<2>Conan.Ty.date@ @[%a@]@ @[<1>(Some@ %a)@]@ @[%a@]@]" serialize_type
+        () serialize_endian endian
+        Serialize.(parens (Arithmetic.serialize (parens ptime_span)))
+        arithmetic
+
 let pf = Format.fprintf
 
 let pp_unsigned ppf { unsigned } = if unsigned then pf ppf "u"

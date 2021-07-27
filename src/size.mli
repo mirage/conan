@@ -10,6 +10,8 @@ type t = private
   | Lequad
   | Bequad
 
+val serialize : Format.formatter -> t -> unit
+
 val byte : t
 
 val leshort : t
