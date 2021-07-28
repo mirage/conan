@@ -2,34 +2,6 @@ open Conan_unix
 
 let previous = ref (Mtime.of_uint64_ns 0L)
 
-let pp_span ppf v =
-  let span = Mtime.Span.to_uint64_ns v in
-  Format.fprintf ppf "%12Ld" span
-
-let reporter ppf =
-  let report src level ~over k msgf =
-    let k _ =
-      over () ;
-      k () in
-    let with_metadata header _tags k ppf fmt =
-      let now = Mtime_clock.now () in
-      let diff = Mtime.span !previous now in
-      previous := now ;
-      Format.kfprintf k ppf
-        ("[%a]%a[%a]: " ^^ fmt ^^ "\n%!")
-        Fmt.(styled `Blue pp_span)
-        diff Logs_fmt.pp_header (level, header)
-        Fmt.(styled `Magenta string)
-        (Logs.Src.name src) in
-    msgf @@ fun ?header ?tags fmt -> with_metadata header tags k ppf fmt in
-  { Logs.report }
-
-let () = Fmt_tty.setup_std_outputs ~style_renderer:`Ansi_tty ~utf_8:true ()
-
-let () = Logs.set_reporter (reporter Fmt.stderr)
-
-let () = Logs.set_level ~all:true (Some Logs.Debug)
-
 let ( >>= ) x f = match x with Ok x -> f x | Error err -> Error err
 
 let run ?(fmt = `Usual) filename =
