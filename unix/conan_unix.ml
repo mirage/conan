@@ -228,14 +228,14 @@ let run_with_tree tree filename =
 
 let run ~database filename =
   if Sys.file_exists filename
-  then 
+  then
     let tree = fill_tree database in
     let database = Process.database ~tree in
     let result =
       let fd = File.openfile filename in
       let rs =
-        Unix_scheduler.prj (Process.descending_walk unix File.syscall fd database)
-      in
+        Unix_scheduler.prj
+          (Process.descending_walk unix File.syscall fd database) in
       File.close fd ;
       rs in
     Ok result

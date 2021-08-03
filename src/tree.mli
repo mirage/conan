@@ -5,11 +5,13 @@ type t = private Node of (elt * t) list | Done
 and elt
 
 val serialize : Format.formatter -> t -> unit
+
 val serialize_elt : Format.formatter -> elt -> unit
 
 val pp : Format.formatter -> t -> unit
 
 val depth : t -> int
+
 val weight : t -> int
 
 type operation = private

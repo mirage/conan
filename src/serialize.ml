@@ -155,7 +155,7 @@ module Re_serialize = struct
 
   and pmark ppf (_idx, t) =
     Format.fprintf ppf "@[<2>Re.mark@ @[%a@]@ |>@ snd@]" (parens view) t
-    (* XXX(dinosaure): [assert false]? *)
+  (* XXX(dinosaure): [assert false]? *)
 
   and view ppf = function
     | Re.View.Set cset -> set ppf cset
