@@ -1,6 +1,8 @@
 open Conan
 open Sigs
 
+let error_msgf fmt = Format.kasprintf (fun err -> Error (`Msg err)) fmt
+
 module Make (S : sig
   type +'a t
 end) =
@@ -225,13 +227,18 @@ let run_with_tree tree filename =
   Ok result
 
 let run ~database filename =
-  let tree = fill_tree database in
-  let database = Process.database ~tree in
-  let result =
-    let fd = File.openfile filename in
-    let rs =
-      Unix_scheduler.prj (Process.descending_walk unix File.syscall fd database)
-    in
-    File.close fd ;
-    rs in
-  Ok result
+  if Sys.file_exists filename
+  then 
+    let tree = fill_tree database in
+    let database = Process.database ~tree in
+    let result =
+      let fd = File.openfile filename in
+      let rs =
+        Unix_scheduler.prj (Process.descending_walk unix File.syscall fd database)
+      in
+      File.close fd ;
+      rs in
+    Ok result
+  else if Sys.file_exists filename
+  then error_msgf "%s does not exist" database
+  else error_msgf "%s does not exist" filename
