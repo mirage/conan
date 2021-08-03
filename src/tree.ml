@@ -45,6 +45,20 @@ let pp_operation_with_debug ppf t =
 
 type t = Node of (elt * t) list | Done
 
+let rec depth = function
+  | Done | Node [] -> 1
+  | Node lst ->
+    List.rev_map (fun (_, t) -> depth t) lst |> maximum |> (+) 1
+and maximum = function
+  | [] -> 0
+  | x :: r -> max x (maximum r)
+
+let rec weight = function
+  | Done | Node [] -> 1
+  | Node lst ->
+    List.rev_map (fun (_, t) -> weight t) lst |>
+    List.fold_left (+) (List.length lst)
+
 let serialize_message ppf = function
   | `No_space str -> Format.fprintf ppf "`No_space %S" str
   | `Space str -> Format.fprintf ppf "`Space %S" str

@@ -14,4 +14,4 @@
 (cram
  (deps
   (source_tree ../examples)
-  %{bin:conan.serialize}))
+  (package conan)))

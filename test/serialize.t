@@ -1,13 +1,12 @@
   $ conan.serialize ../examples/
   $ test -f ../examples/elf.ml
-  $ cat >../examples/dune <<EOF
+  $ cd ../examples/
+  $ cat >dune <<EOF
   > (executable
   >  (name conan_database)
-  >  (libraries conan.unix conan))
+  >  (libraries conan conan.unix))
   > EOF
-  $ cat >../examples/dune-project <<EOF
+  $ cat >dune-project <<EOF
   > (lang dune 2.0)
   > EOF
-  $ cd ../examples/
-  $ ulimit -s 16384
   $ dune build ./conan_database.exe
