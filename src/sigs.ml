@@ -1,4 +1,4 @@
-type ('a, 's) io
+type (+'a, 's) io
 
 type 's scheduler = {
   bind : 'a 'b. ('a, 's) io -> ('a -> ('b, 's) io) -> ('b, 's) io;
