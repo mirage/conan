@@ -80,7 +80,8 @@ let serialize : type test v. Format.formatter -> (test, v) t -> unit =
         match (text, binary) with
         | true, false -> Format.pp_print_string ppf "`Text"
         | false, true -> Format.pp_print_string ppf "`Binary"
-        | _ -> assert false in
+        | _ -> assert false
+        (* XXX(dinosaure): should never occur! *) in
       Format.fprintf ppf
         "@[<2>Conan.Ty.search@ ~compact_whitespaces:%b@ ~optional_blank:%b@ \
          ~lower_case_insensitive:%b@ ~upper_case_insensitive:%b@ @[%a@]@ \
@@ -143,7 +144,8 @@ let serialize : type test v. Format.formatter -> (test, v) t -> unit =
         | `UTC, `s64 -> Format.pp_print_string ppf "`Qdate"
         | `Local, `s64 -> Format.pp_print_string ppf "`Qldate"
         | `Window, `s64 -> Format.pp_print_string ppf "`Qwdate"
-        | `Window, `s32 -> assert false in
+        | `Window, `s32 -> assert false
+        (* XXX(dinosaure): should never occur! *) in
       Format.fprintf ppf
         "@[<2>Conan.Ty.date@ @[%a@]@ @[<1>(Some@ %a)@]@ @[%a@]@]" serialize_type
         () serialize_endian endian
@@ -370,22 +372,6 @@ let reword_error f = function Ok x -> Ok x | Error err -> Error (f err)
 
 let id x = x
 
-let process_numeric :
-    type test v. (test, v) t -> Size.t * (int64 -> v) * v Integer.t = function
-  | Byte _ -> (Size.byte, Char.chr <.> Int64.to_int, Integer.byte)
-  | Short (_, _, `LE) -> (Size.leshort, Int64.to_int, Integer.short)
-  | Short (_, _, `BE) -> (Size.beshort, Int64.to_int, Integer.short)
-  | Short (_, _, `NE) -> (Size.short, Int64.to_int, Integer.short)
-  | Long (_, _, `LE) -> (Size.lelong, Int64.to_int32, Integer.int32)
-  | Long (_, _, `BE) -> (Size.belong, Int64.to_int32, Integer.int32)
-  | Long (_, _, `NE) -> (Size.long, Int64.to_int32, Integer.int32)
-  | Quad (_, _, `LE) -> (Size.lequad, id, Integer.int64)
-  | Quad (_, _, `BE) -> (Size.bequad, id, Integer.int64)
-  | Quad (_, _, `NE) -> (Size.quad, id, Integer.int64)
-  | _ -> assert false
-
-(* TODO *)
-
 let read_float ({ bind; return } as scheduler) syscall fd endian =
   let ( >>= ) = bind in
   let size =
@@ -479,31 +465,46 @@ let process :
                 go (Ropes.of_string ~off ~len line :: acc) (pred n) in
           go [] (max 0 (Int64.to_int limit)))
   | Byte ({ unsigned }, c) ->
-      let size, converter, w = process_numeric ty in
+      let size, converter, w =
+        (Size.byte, Char.chr <.> Int64.to_int, Integer.byte) in
       syscall.seek fd abs_offset SET >|= reword_error (fun err -> `Syscall err)
       >?= fun () ->
       Size.read scheduler syscall fd size
       >?= (return <.> ok <.> converter)
       >|= reword_error (fun err -> `Syscall err)
       >?= fun v -> (return <.> ok) (Arithmetic.process ~unsigned w v c)
-  | Short ({ unsigned }, c, _) ->
-      let size, converter, w = process_numeric ty in
+  | Short ({ unsigned }, c, endian) ->
+      let size, converter, w =
+        match endian with
+        | `LE -> (Size.leshort, Int64.to_int, Integer.short)
+        | `BE -> (Size.beshort, Int64.to_int, Integer.short)
+        | `NE -> (Size.short, Int64.to_int, Integer.short) in
       syscall.seek fd abs_offset SET >|= reword_error (fun err -> `Syscall err)
       >?= fun () ->
       Size.read scheduler syscall fd size
       >?= (return <.> ok <.> converter)
       >|= reword_error (fun err -> `Syscall err)
       >?= fun v -> (return <.> ok) (Arithmetic.process ~unsigned w v c)
-  | Long ({ unsigned }, c, _) ->
-      let size, converter, w = process_numeric ty in
+  | Long ({ unsigned }, c, endian) ->
+      let size, converter, w =
+        match endian with
+        | `LE -> (Size.lelong, Int64.to_int32, Integer.int32)
+        | `BE -> (Size.belong, Int64.to_int32, Integer.int32)
+        | `NE -> (Size.long, Int64.to_int32, Integer.int32)
+        | `ME -> failwith "Middle-endian not supported" in
       syscall.seek fd abs_offset SET >|= reword_error (fun err -> `Syscall err)
       >?= fun () ->
       Size.read scheduler syscall fd size
       >?= (return <.> ok <.> converter)
       >|= reword_error (fun err -> `Syscall err)
       >?= fun v -> (return <.> ok) (Arithmetic.process ~unsigned w v c)
-  | Quad ({ unsigned }, c, _) ->
-      let size, converter, w = process_numeric ty in
+  | Quad ({ unsigned }, c, endian) ->
+      let size, converter, w =
+        match endian with
+        | `LE -> (Size.lequad, id, Integer.int64)
+        | `BE -> (Size.bequad, id, Integer.int64)
+        | `NE -> (Size.quad, id, Integer.int64)
+        | `ME -> failwith "Middle-endian not supported" in
       syscall.seek fd abs_offset SET >|= reword_error (fun err -> `Syscall err)
       >?= fun () ->
       Size.read scheduler syscall fd size
@@ -554,6 +555,6 @@ let process :
       match Ptime.of_span (Arithmetic.process_ptime v c) with
       | Some v -> return (ok (Ptime.to_rfc3339 v))
       | None -> return (error `Invalid_date))
-  | Unicode_string _ -> return (ok "")
+  | Unicode_string _ -> assert false
   | Pascal_string -> assert false
   | Indirect _ -> assert false
