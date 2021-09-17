@@ -67,8 +67,10 @@ let pp : type a. Format.formatter -> a t -> unit =
   | False -> pf ppf "#"
   | Numeric (w, v) -> pf ppf "numeric:%a" (Comparison.pp (Integer.pp w)) v
   | Float v -> pf ppf "float:%a" (Comparison.pp pp_float) v
-  | Unicode_string (`LE, v) -> pf ppf "unicode-le:%a" (Comparison.pp pp_string) v
-  | Unicode_string (`BE, v) -> pf ppf "unicode-le:%a" (Comparison.pp pp_string) v
+  | Unicode_string (`LE, v) ->
+      pf ppf "unicode-le:%a" (Comparison.pp pp_string) v
+  | Unicode_string (`BE, v) ->
+      pf ppf "unicode-le:%a" (Comparison.pp pp_string) v
   | String v -> pf ppf "string:%a" (Comparison.pp pp_string) v
   | Regex v -> pf ppf "regex:%a" (Comparison.pp Re.pp) v
   | Length v -> pf ppf "length:%a" (Comparison.pp pp_int) v
@@ -107,30 +109,38 @@ let process : type test v. (test, v) Ty.t -> test t -> v -> v option =
       if Comparison.process_string a c then Some a else None
   | Unicode_string `LE, (String c | Unicode_string (`LE, c)) ->
       if Comparison.process_string a c then Some a else None
-  | Unicode_string `LE, Unicode_string (`BE, c) ->
-      let a = Uutf.String.fold_utf_16le (fun acc _ v -> match acc, v with
-        | Ok acc, `Uchar v -> Ok (v :: acc)
-        | Error _ as err, _ -> err
-        | _, `Malformed err -> Error err) (Ok []) a in
-      ( match a with
+  | Unicode_string `LE, Unicode_string (`BE, c) -> (
+      let a =
+        Uutf.String.fold_utf_16le
+          (fun acc _ v ->
+            match (acc, v) with
+            | Ok acc, `Uchar v -> Ok (v :: acc)
+            | (Error _ as err), _ -> err
+            | _, `Malformed err -> Error err)
+          (Ok []) a in
+      match a with
       | Ok a ->
-        let buf = Buffer.create 0x16 in
-        List.iter (Uutf.Buffer.add_utf_16be buf) (List.rev a) ;
-        let a = Buffer.contents buf in
-        if Comparison.process_string a c then Some a else None
-      | _ -> None )
-  | Unicode_string `BE, Unicode_string (`LE, c) ->
-      let a = Uutf.String.fold_utf_16be (fun acc _ v -> match acc, v with
-        | Ok acc, `Uchar v -> Ok (v :: acc)
-        | Error _ as err, _ -> err
-        | _, `Malformed err -> Error err) (Ok []) a in
-      ( match a with
+          let buf = Buffer.create 0x16 in
+          List.iter (Uutf.Buffer.add_utf_16be buf) (List.rev a) ;
+          let a = Buffer.contents buf in
+          if Comparison.process_string a c then Some a else None
+      | _ -> None)
+  | Unicode_string `BE, Unicode_string (`LE, c) -> (
+      let a =
+        Uutf.String.fold_utf_16be
+          (fun acc _ v ->
+            match (acc, v) with
+            | Ok acc, `Uchar v -> Ok (v :: acc)
+            | (Error _ as err), _ -> err
+            | _, `Malformed err -> Error err)
+          (Ok []) a in
+      match a with
       | Ok a ->
-        let buf = Buffer.create 0x16 in
-        List.iter (Uutf.Buffer.add_utf_16le buf) (List.rev a) ;
-        let a = Buffer.contents buf in
-        if Comparison.process_string a c then Some a else None
-      | _ -> None )
+          let buf = Buffer.create 0x16 in
+          List.iter (Uutf.Buffer.add_utf_16le buf) (List.rev a) ;
+          let a = Buffer.contents buf in
+          if Comparison.process_string a c then Some a else None
+      | _ -> None)
   | Search _, String c -> if Comparison.process_string a c then Some a else None
   | Regex { case_insensitive; _ }, Regex c -> (
       let re = Comparison.value c in

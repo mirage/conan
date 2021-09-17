@@ -411,8 +411,11 @@ let rule : Parse.rule -> operation =
             { fmt = (fun () -> format_of_ty ty message); str = message } )
     | String c, Unicode_string _ ->
         let pattern = Comparison.value c in
-        Rule (offset, (Ty.with_pattern pattern ty), test,
-              { fmt= (fun () -> format_of_ty ty message); str = message })
+        Rule
+          ( offset,
+            Ty.with_pattern pattern ty,
+            test,
+            { fmt = (fun () -> format_of_ty ty message); str = message } )
     | String c, Search { range; _ } ->
         let pattern = Comparison.value c in
         let range = max range ((Int64.of_int <.> String.length) pattern) in
