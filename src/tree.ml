@@ -363,7 +363,7 @@ let rule : Parse.rule -> operation =
         let c = Comparison.map ~f:Number.to_float c in
         Test (Test.float c)
     | `String c, Search _ | `String c, Pascal_string -> Test (Test.string c)
-    | `String c, Unicode_string _ -> Test (Test.string c)
+    | `String c, Unicode_string endian -> Test (Test.str_unicode endian c)
     | `String c, Regex _ -> (
         let f v = Re.Posix.re (normalize_regex v) in
         try Test (Test.regex (Comparison.map ~f c))
@@ -409,6 +409,10 @@ let rule : Parse.rule -> operation =
             ty,
             Test.regex c,
             { fmt = (fun () -> format_of_ty ty message); str = message } )
+    | String c, Unicode_string _ ->
+        let pattern = Comparison.value c in
+        Rule (offset, (Ty.with_pattern pattern ty), test,
+              { fmt= (fun () -> format_of_ty ty message); str = message })
     | String c, Search { range; _ } ->
         let pattern = Comparison.value c in
         let range = max range ((Int64.of_int <.> String.length) pattern) in
@@ -469,7 +473,7 @@ let rule : Parse.rule -> operation =
             ty,
             test,
             { fmt = (fun () -> format_of_ty ty message); str = message } )
-    | String _, Unicode_string _ ->
+    | Unicode_string _, Unicode_string _ ->
         Rule
           ( offset,
             ty,

@@ -555,6 +555,6 @@ let process :
       match Ptime.of_span (Arithmetic.process_ptime v c) with
       | Some v -> return (ok (Ptime.to_rfc3339 v))
       | None -> return (error `Invalid_date))
-  | Unicode_string _ -> assert false
+  | Unicode_string _ -> return (Ok "")
   | Pascal_string -> assert false
   | Indirect _ -> assert false
