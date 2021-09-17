@@ -1,3 +1,5 @@
+type 'a t = Format.formatter -> 'a -> unit
+
 let cut ppf _ = Format.pp_print_cut ppf ()
 
 let fmt fmt ppf = Format.fprintf ppf fmt
