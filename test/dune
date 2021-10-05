@@ -19,4 +19,5 @@
 (cram
  (deps
   (source_tree ../examples)
+  %{bin:conan.file}
   (package conan)))
