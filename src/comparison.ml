@@ -95,3 +95,8 @@ let process_string a = function
   | Greater b -> a > b
   | Lower b -> a < b
   | And _ | Xor _ -> invalid_arg "Invalid bitwise operation on string"
+
+let process_ptime a c =
+  let a = Ptime.Span.to_float_s a in
+  let c = map ~f:Ptime.Span.to_float_s c in
+  process_float a c

@@ -37,11 +37,7 @@ let jd_of_date (year, month, day) =
   let m = month + (12 * a) - 3 in
   day
   + (((153 * m) + 2) / 5)
-  + (365 * y)
-  + (y / 4)
-  - (y / 100)
-  + (y / 400)
-  - 32045
+  + (365 * y) + (y / 4) - (y / 100) + (y / 400) - 32045
 
 let jd_posix_epoch = 2_440_588 (* the Julian day of the POSIX epoch *)
 
@@ -137,8 +133,8 @@ module Span = struct
   let zero = (0, 0L)
 
   let v ((d, ps) as s) =
-    if ps < 0L || ps > ps_day_max
-    then invalid_arg (Format.sprintf "illegal ptime time span: (%d,%Ld)" d ps)
+    if ps < 0L || ps > ps_day_max then
+      invalid_arg (Format.sprintf "illegal ptime time span: (%d,%Ld)" d ps)
     else s
 
   let of_d_ps ((_, ps) as s) =
@@ -160,8 +156,7 @@ module Span = struct
   let day_int_max = max_int / 86_400
 
   let to_int_s (d, ps) =
-    if d < day_int_min || d > day_int_max
-    then None
+    if d < day_int_min || d > day_int_max then None
     else
       let days_s = d * 86_400 in
       let day_s = Int64.(to_int (div ps ps_count_in_s)) (* always positive *) in
@@ -173,17 +168,14 @@ module Span = struct
   let max_int_float = float max_int
 
   let of_float_s secs =
-    if secs <> secs (* nan *)
-    then None
+    if secs <> secs (* nan *) then None
     else
       let days = floor (secs /. 86_400.) in
-      if days < min_int_float || days > max_int_float
-      then None
+      if days < min_int_float || days > max_int_float then None
       else
         let rem_s = mod_float secs 86_400. in
         let rem_s = if rem_s < 0. then 86_400. +. rem_s else rem_s in
-        if rem_s >= 86_400.
-        then Some (int_of_float days + 1, 0L)
+        if rem_s >= 86_400. then Some (int_of_float days + 1, 0L)
         else
           let frac_s, rem_s = modf rem_s in
           let rem_ps = Int64.(mul (of_float rem_s) ps_count_in_s) in
@@ -257,71 +249,65 @@ module Span = struct
     (* assert d >= 0 *)
     let y, rem_d =
       let max_d = max_int / 4 in
-      if d > max_d
-      then (* d * 4 overflows *) (d / 365, d mod 365)
+      if d > max_d then (* d * 4 overflows *) (d / 365, d mod 365)
       else
         let y = d * 4 / 1461 (* / 365.25 *) in
-        (y, d - (y * 1461 / 4)) in
+        (y, d - (y * 1461 / 4))
+    in
     let days = rem_d + Int64.to_int (round_div ps ps_count_in_day) in
     let y, days = if days = 366 then (y + 1, 1) else (y, days) in
     let y = if neg then -y else y in
-    Format.fprintf ppf "%dy" y ;
-    if days <> 0 then Format.fprintf ppf "%dd" days ;
+    Format.fprintf ppf "%dy" y;
+    if days <> 0 then Format.fprintf ppf "%dd" days;
     ()
 
   let pp_d_h ppf ~neg d ps =
     let h, _ = divide_ps ~carry:1 ps ps_count_in_hour ps_count_in_hour in
     let d, h = if h = 24 then (d + 1, 0) else (d, h) in
-    if d = 366
-    then Format.fprintf ppf "%dy1d" (if neg then -1 else 1)
-    else if d = 365 && h >= 6
-    then Format.fprintf ppf "%dy" (if neg then -1 else 1)
+    if d = 366 then Format.fprintf ppf "%dy1d" (if neg then -1 else 1)
+    else if d = 365 && h >= 6 then
+      Format.fprintf ppf "%dy" (if neg then -1 else 1)
     else
       let d = if neg then -d else d in
-      Format.fprintf ppf "%dd" d ;
-      if h <> 0 then Format.fprintf ppf "%dh" h ;
+      Format.fprintf ppf "%dd" d;
+      if h <> 0 then Format.fprintf ppf "%dh" h;
       ()
 
   let pp_h_m ppf ~neg ps =
     let h, m = divide_ps ~carry:60 ps ps_count_in_hour ps_count_in_min in
-    if h = 24
-    then Format.fprintf ppf "%dd" (if neg then -1 else 1)
+    if h = 24 then Format.fprintf ppf "%dd" (if neg then -1 else 1)
     else
       let h = if neg then -h else h in
-      Format.fprintf ppf "%dh" h ;
-      if m <> 0 then Format.fprintf ppf "%dmin" m ;
+      Format.fprintf ppf "%dh" h;
+      if m <> 0 then Format.fprintf ppf "%dmin" m;
       ()
 
   let pp_m_s ppf ~neg ps =
     let m, s = divide_ps ~carry:60 ps ps_count_in_min ps_count_in_s in
-    if m = 60
-    then Format.fprintf ppf "%dh" (if neg then -1 else 1)
+    if m = 60 then Format.fprintf ppf "%dh" (if neg then -1 else 1)
     else
       let m = if neg then -m else m in
-      Format.fprintf ppf "%dmin" m ;
-      if s <> 0 then Format.fprintf ppf "%ds" s ;
+      Format.fprintf ppf "%dmin" m;
+      if s <> 0 then Format.fprintf ppf "%ds" s;
       ()
 
   let pp_s ppf ~neg ps =
     let s, ms = divide_ps ~carry:1000 ps ps_count_in_s ps_count_in_ms in
-    if s = 60
-    then Format.fprintf ppf "%dmin" (if neg then -1 else 1)
+    if s = 60 then Format.fprintf ppf "%dmin" (if neg then -1 else 1)
     else
       let s = if neg then -s else s in
-      if ms <> 0
-      then Format.fprintf ppf "%d.%ds" s ms
+      if ms <> 0 then Format.fprintf ppf "%d.%ds" s ms
       else Format.fprintf ppf "%ds" s
 
   let pp_unit higher_str hi hi_str frac_limit lo ppf ~neg ps =
     let pp_unit_integral ppf ~neg h =
-      if h = 1000
-      then Format.fprintf ppf "%d%s" (if neg then -1 else 1) higher_str
-      else Format.fprintf ppf "%d%s" (if neg then -h else h) hi_str in
-    if ps < frac_limit
-    then
+      if h = 1000 then
+        Format.fprintf ppf "%d%s" (if neg then -1 else 1) higher_str
+      else Format.fprintf ppf "%d%s" (if neg then -h else h) hi_str
+    in
+    if ps < frac_limit then
       let h, l = divide_ps ~carry:1000 ps hi lo in
-      if h >= 100 || l = 0
-      then pp_unit_integral ppf ~neg h
+      if h >= 100 || l = 0 then pp_unit_integral ppf ~neg h
       else
         let h = if neg then -h else h in
         Format.fprintf ppf "%d.%d%s" h l hi_str
@@ -343,18 +329,12 @@ module Span = struct
     let neg = sign < 0 in
     match abs s with
     | 0, ps ->
-        if ps >= ps_count_in_hour
-        then pp_h_m ppf ~neg ps
-        else if ps >= ps_count_in_min
-        then pp_m_s ppf ~neg ps
-        else if ps >= ps_count_in_s
-        then pp_s ppf ~neg ps
-        else if ps >= ps_count_in_ms
-        then pp_ms ppf ~neg ps
-        else if ps >= ps_count_in_us
-        then pp_us ppf ~neg ps
-        else if ps >= ps_count_in_ns
-        then pp_ns ppf ~neg ps
+        if ps >= ps_count_in_hour then pp_h_m ppf ~neg ps
+        else if ps >= ps_count_in_min then pp_m_s ppf ~neg ps
+        else if ps >= ps_count_in_s then pp_s ppf ~neg ps
+        else if ps >= ps_count_in_ms then pp_ms ppf ~neg ps
+        else if ps >= ps_count_in_us then pp_us ppf ~neg ps
+        else if ps >= ps_count_in_ns then pp_ns ppf ~neg ps
         else pp_ps ppf ~neg ps
     | d, ps -> if d > 365 then pp_y_d ppf ~neg d ps else pp_d_h ppf ~neg d ps
 end
@@ -362,8 +342,8 @@ end
 (* POSIX timestamps *)
 
 let v ((d, ps) as s) =
-  if ps < 0L || ps > ps_day_max || d < day_min || d > day_max
-  then invalid_arg (Format.sprintf "illegal ptime timestamp: (%d,%Ld)" d ps)
+  if ps < 0L || ps > ps_day_max || d < day_min || d > day_max then
+    invalid_arg (Format.sprintf "illegal ptime timestamp: (%d,%Ld)" d ps)
   else s
 
 let unsafe_of_d_ps s = s
@@ -419,7 +399,9 @@ type time = (int * int * int) * tz_offset_s
 let max_month_day =
   (* max day number in a given year's month. *)
   let is_leap_year y = y mod 4 = 0 && (y mod 100 <> 0 || y mod 400 = 0) in
-  let mlen = [| 31; 28 (* or not *); 31; 30; 31; 30; 31; 31; 30; 31; 30; 31 |] in
+  let mlen =
+    [| 31; 28 (* or not *); 31; 30; 31; 30; 31; 31; 30; 31; 30; 31 |]
+  in
   fun y m -> if m = 2 && is_leap_year y then 29 else mlen.(m - 1)
 
 let is_date_valid (y, m, d) =
@@ -444,8 +426,7 @@ let of_date_time (date, (((hh, mm, ss), tz_offset_s) as t)) =
      formally non-existing UTC date-time with a seconds value of 59
      (leap second subtraction) is mapped on the POSIX timestamp that
      represents this non existing instant. *)
-  if not (is_date_valid date && is_time_valid t)
-  then None
+  if not (is_date_valid date && is_time_valid t) then None
   else
     let d = jd_of_date date - jd_posix_epoch in
     let hh_ps = Int64.(mul (of_int hh) ps_count_in_hour) in
@@ -481,7 +462,8 @@ let to_date_time ?(tz_offset_s = 0) t =
   let (d, ps), tz_offset_s =
     match add_span t (Span.of_int_s tz_offset_s) with
     | None -> (t, 0) (* fallback to UTC *)
-    | Some local -> (local, tz_offset_s) in
+    | Some local -> (local, tz_offset_s)
+  in
   let jd = d + jd_posix_epoch in
   let date = jd_to_date jd in
   let hh = Int64.(to_int (div ps ps_count_in_hour)) in
@@ -498,7 +480,8 @@ let to_date t = fst (to_date_time ~tz_offset_s:0 t)
 let weekday =
   let wday =
     (* Epoch was a thursday *)
-    [| `Thu; `Fri; `Sat; `Sun; `Mon; `Tue; `Wed |] in
+    [| `Thu; `Fri; `Sat; `Sun; `Mon; `Tue; `Wed |]
+  in
   fun ?(tz_offset_s = 0) t ->
     let d, _ = Span.add t (Span.of_int_s tz_offset_s) in
     (* N.B. in contrast to [to_date_time] we don't care if we fall outside
@@ -523,9 +506,10 @@ let pp_rfc3339_error ppf = function
   | `Exp_chars cs ->
       let rec pp_chars ppf = function
         | c :: cs ->
-            Format.fprintf ppf "@ %C" c ;
+            Format.fprintf ppf "@ %C" c;
             pp_chars ppf cs
-        | [] -> () in
+        | [] -> ()
+      in
       Format.fprintf ppf "@[expected@ a@ character@ in:%a@]" pp_chars cs
 
 let rfc3339_error_to_msg = function
@@ -546,39 +530,34 @@ let is_digit = function '0' .. '9' -> true | _ -> false
 
 let parse_digits ~count pos max s =
   let stop = pos + count - 1 in
-  if stop > max
-  then error_pos max `Eoi
+  if stop > max then error_pos max `Eoi
   else
     let rec loop k acc =
-      if k > stop
-      then acc
-      else if is_digit s.[k]
-      then loop (k + 1) ((acc * 10) + Char.code s.[k] - 0x30)
-      else error_exp_digit k in
+      if k > stop then acc
+      else if is_digit s.[k] then
+        loop (k + 1) ((acc * 10) + Char.code s.[k] - 0x30)
+      else error_exp_digit k
+    in
     loop pos 0
 
 let parse_char c pos max s =
-  if pos > max
-  then error_pos max `Eoi
-  else if s.[pos] = c
-  then ()
+  if pos > max then error_pos max `Eoi
+  else if s.[pos] = c then ()
   else error_pos pos (`Exp_chars [ c ])
 
 let parse_dt_sep ~strict pos max s =
   let is_dt_sep = function
     | 'T' -> true
     | ('t' | ' ') when not strict -> true
-    | _ -> false in
-  if pos > max
-  then error_pos max `Eoi
-  else if is_dt_sep s.[pos]
-  then ()
+    | _ -> false
+  in
+  if pos > max then error_pos max `Eoi
+  else if is_dt_sep s.[pos] then ()
   else
     error_pos pos (`Exp_chars ([ 'T' ] @ if strict then [] else [ 't'; ' ' ]))
 
 let decide_frac_or_tz ~strict pos max s =
-  if pos > max
-  then error_pos max `Eoi
+  if pos > max then error_pos max `Eoi
   else
     match s.[pos] with
     | '.' -> `Frac
@@ -589,25 +568,22 @@ let decide_frac_or_tz ~strict pos max s =
         error_pos pos (`Exp_chars chars)
 
 let parse_frac_ps pos max s =
-  if pos > max
-  then error_pos max `Eoi
-  else if not (is_digit s.[pos])
-  then error_exp_digit pos
+  if pos > max then error_pos max `Eoi
+  else if not (is_digit s.[pos]) then error_exp_digit pos
   else
     let rec loop k acc pow =
-      if k > max
-      then error_pos max `Eoi
-      else if not (is_digit s.[k])
-      then (Some acc, k)
+      if k > max then error_pos max `Eoi
+      else if not (is_digit s.[k]) then (Some acc, k)
       else
         let count = k - pos + 1 in
-        if count > 12
-        then (* truncate *) loop (k + 1) acc pow
+        if count > 12 then (* truncate *) loop (k + 1) acc pow
         else
           let pow = Int64.div pow 10L in
           let acc =
-            Int64.(add acc (mul (of_int (Char.code s.[k] - 0x30)) pow)) in
-          loop (k + 1) acc pow in
+            Int64.(add acc (mul (of_int (Char.code s.[k] - 0x30)) pow))
+          in
+          loop (k + 1) acc pow
+    in
     loop pos 0L ps_count_in_s
 
 let parse_tz_s ~strict pos max s =
@@ -615,21 +591,20 @@ let parse_tz_s ~strict pos max s =
     let hh_pos = pos in
     let mm_pos = hh_pos + 3 in
     let hh = parse_digits ~count:2 hh_pos max s in
-    parse_char ':' (mm_pos - 1) max s ;
+    parse_char ':' (mm_pos - 1) max s;
     let mm = parse_digits ~count:2 mm_pos max s in
-    if hh > 23
-    then error (hh_pos, hh_pos + 1) `Invalid_stamp
-    else if mm > 59
-    then error (mm_pos, mm_pos + 1) `Invalid_stamp
+    if hh > 23 then error (hh_pos, hh_pos + 1) `Invalid_stamp
+    else if mm > 59 then error (mm_pos, mm_pos + 1) `Invalid_stamp
     else
       let secs = (hh * 3600) + (mm * 60) in
       let tz_s =
         match secs = 0 && sign = -1 with
         | true -> None (* -00:00 convention *)
-        | false -> Some (sign * secs) in
-      (tz_s, mm_pos + 1) in
-  if pos > max
-  then error_pos max `Eoi
+        | false -> Some (sign * secs)
+      in
+      (tz_s, mm_pos + 1)
+  in
+  if pos > max then error_pos max `Eoi
   else
     match s.[pos] with
     | 'Z' -> (Some 0, pos)
@@ -644,8 +619,7 @@ let of_rfc3339 ?(strict = false) ?(sub = false) ?(start = 0) s =
   try
     let s_len = String.length s in
     let max = s_len - 1 in
-    if s_len = 0 || start < 0 || start > max
-    then error_pos start `Eoi
+    if s_len = 0 || start < 0 || start > max then error_pos start `Eoi
     else
       let y_pos = start in
       let m_pos = y_pos + 5 in
@@ -655,20 +629,21 @@ let of_rfc3339 ?(strict = false) ?(sub = false) ?(start = 0) s =
       let ss_pos = mm_pos + 3 in
       let decide_pos = ss_pos + 2 in
       let y = parse_digits ~count:4 y_pos max s in
-      parse_char '-' (m_pos - 1) max s ;
+      parse_char '-' (m_pos - 1) max s;
       let m = parse_digits ~count:2 m_pos max s in
-      parse_char '-' (d_pos - 1) max s ;
+      parse_char '-' (d_pos - 1) max s;
       let d = parse_digits ~count:2 d_pos max s in
-      parse_dt_sep ~strict (hh_pos - 1) max s ;
+      parse_dt_sep ~strict (hh_pos - 1) max s;
       let hh = parse_digits ~count:2 hh_pos max s in
-      parse_char ':' (mm_pos - 1) max s ;
+      parse_char ':' (mm_pos - 1) max s;
       let mm = parse_digits ~count:2 mm_pos max s in
-      parse_char ':' (ss_pos - 1) max s ;
+      parse_char ':' (ss_pos - 1) max s;
       let ss = parse_digits ~count:2 ss_pos max s in
       let frac, tz_pos =
         match decide_frac_or_tz ~strict decide_pos max s with
         | `Frac -> parse_frac_ps (decide_pos + 1) max s
-        | `Tz -> (None, decide_pos) in
+        | `Tz -> (None, decide_pos)
+      in
       let tz_s_opt, last_pos = parse_tz_s ~strict tz_pos max s in
       let tz_s = match tz_s_opt with None -> 0 | Some s -> s in
       match of_date_time ((y, m, d), ((hh, mm, ss), tz_s)) with
@@ -677,12 +652,13 @@ let of_rfc3339 ?(strict = false) ?(sub = false) ?(start = 0) s =
           let t, _tz_s =
             match frac with
             | None | Some 0L -> (t, tz_s)
-            | Some frac ->
-            match add_span t (0, frac) with
-            | None -> error (start, last_pos) `Invalid_stamp
-            | Some t -> (t, tz_s) in
-          if (not sub) && last_pos <> max
-          then error_pos (last_pos + 1) `Trailing_input
+            | Some frac -> (
+                match add_span t (0, frac) with
+                | None -> error (start, last_pos) `Invalid_stamp
+                | Some t -> (t, tz_s))
+          in
+          if (not sub) && last_pos <> max then
+            error_pos (last_pos + 1) `Trailing_input
           else Ok (t, tz_s_opt, last_pos - start + 1)
   with RFC3339 (r, e) -> Error (`RFC3339 (r, e))
 
@@ -697,8 +673,8 @@ let rfc3339_adjust_tz_offset tz_offset_s =
      complicated to explain and maybe more surprising to the user. *)
   let min = -86340 (* -23h59 in secs *) in
   let max = 86340 (* +23h59 in secs *) in
-  if min <= tz_offset_s && tz_offset_s <= max && tz_offset_s mod 60 = 0
-  then (tz_offset_s, false)
+  if min <= tz_offset_s && tz_offset_s <= max && tz_offset_s mod 60 = 0 then
+    (tz_offset_s, false)
   else (0 (* UTC *), true)
 
 let s_frac_of_ps frac ps =
@@ -709,20 +685,20 @@ let to_rfc3339 ?(space = false) ?frac_s:(frac = 0) ?tz_offset_s ((_, ps) as t) =
   let tz_offset_s, tz_unknown =
     match tz_offset_s with
     | Some tz -> rfc3339_adjust_tz_offset tz
-    | None -> (0, true) in
+    | None -> (0, true)
+  in
   let (y, m, d), ((hh, ss, mm), tz_offset_s) = to_date_time ~tz_offset_s t in
   let dt_sep = if space then ' ' else 'T' in
-  Printf.bprintf buf "%04d-%02d-%02d%c%02d:%02d:%02d" y m d dt_sep hh ss mm ;
+  Printf.bprintf buf "%04d-%02d-%02d%c%02d:%02d:%02d" y m d dt_sep hh ss mm;
   let frac = if frac < 0 then 0 else if frac > 12 then 12 else frac in
-  if frac <> 0 then Printf.bprintf buf ".%0*Ld" frac (s_frac_of_ps frac ps) ;
-  (if tz_offset_s = 0 && not tz_unknown
-  then Printf.bprintf buf "Z"
+  if frac <> 0 then Printf.bprintf buf ".%0*Ld" frac (s_frac_of_ps frac ps);
+  (if tz_offset_s = 0 && not tz_unknown then Printf.bprintf buf "Z"
   else
     let tz_sign = if tz_offset_s < 0 || tz_unknown then '-' else '+' in
     let tz_min = abs (tz_offset_s / 60) in
     let tz_hh = tz_min / 60 in
     let tz_mm = tz_min mod 60 in
-    Printf.bprintf buf "%c%02d:%02d" tz_sign tz_hh tz_mm) ;
+    Printf.bprintf buf "%c%02d:%02d" tz_sign tz_hh tz_mm);
   Buffer.contents buf
 
 let pp_rfc3339 ?space ?frac_s ?tz_offset_s () ppf t =
@@ -734,16 +710,17 @@ let pp_human ?frac_s:(frac = 0) ?tz_offset_s () ppf ((_, ps) as t) =
   let tz_offset_s, tz_unknown =
     match tz_offset_s with
     | Some tz -> rfc3339_adjust_tz_offset tz
-    | None -> (0, true) in
+    | None -> (0, true)
+  in
   let (y, m, d), ((hh, ss, mm), tz_offset_s) = to_date_time ~tz_offset_s t in
-  Format.fprintf ppf "%04d-%02d-%02d %02d:%02d:%02d" y m d hh ss mm ;
+  Format.fprintf ppf "%04d-%02d-%02d %02d:%02d:%02d" y m d hh ss mm;
   let frac = if frac < 0 then 0 else if frac > 12 then 12 else frac in
-  if frac <> 0 then Format.fprintf ppf ".%0*Ld" frac (s_frac_of_ps frac ps) ;
+  if frac <> 0 then Format.fprintf ppf ".%0*Ld" frac (s_frac_of_ps frac ps);
   let tz_sign = if tz_offset_s < 0 || tz_unknown then '-' else '+' in
   let tz_min = abs (tz_offset_s / 60) in
   let tz_hh = tz_min / 60 in
   let tz_mm = tz_min mod 60 in
-  Format.fprintf ppf " %c%02d:%02d" tz_sign tz_hh tz_mm ;
+  Format.fprintf ppf " %c%02d:%02d" tz_sign tz_hh tz_mm;
   ()
 
 let pp = pp_human ~tz_offset_s:0 ()

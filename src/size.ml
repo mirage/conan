@@ -117,33 +117,30 @@ let read :
  fun { bind; return } syscall fd s ->
   let ( >>= ) = bind in
   let ( >?= ) x f =
-    x >>= function Ok x -> f x | Error err -> return (Error err) in
+    x >>= function Ok x -> f x | Error err -> return (Error err)
+  in
   let ( >|= ) x f = x >?= fun x -> (return <.> ok) (f x) in
 
   match s with
   | Byte -> syscall.read_int8 fd >|= Int64.of_int
   | Leshort ->
-      if Sys.big_endian
-      then syscall.read_int16_ne fd >|= swap16 >|= Int64.of_int
+      if Sys.big_endian then
+        syscall.read_int16_ne fd >|= swap16 >|= Int64.of_int
       else syscall.read_int16_ne fd >|= Int64.of_int
   | Beshort ->
-      if Sys.big_endian
-      then syscall.read_int16_ne fd >|= Int64.of_int
+      if Sys.big_endian then syscall.read_int16_ne fd >|= Int64.of_int
       else syscall.read_int16_ne fd >|= swap16 >|= Int64.of_int
   | Lelong ->
-      if Sys.big_endian
-      then syscall.read_int32_ne fd >|= swap32 >|= Int64.of_int32
+      if Sys.big_endian then
+        syscall.read_int32_ne fd >|= swap32 >|= Int64.of_int32
       else syscall.read_int32_ne fd >|= Int64.of_int32
   | Belong ->
-      if Sys.big_endian
-      then syscall.read_int32_ne fd >|= Int64.of_int32
+      if Sys.big_endian then syscall.read_int32_ne fd >|= Int64.of_int32
       else syscall.read_int32_ne fd >|= swap32 >|= Int64.of_int32
   | Lequad ->
-      if Sys.big_endian
-      then syscall.read_int64_ne fd >|= swap64
+      if Sys.big_endian then syscall.read_int64_ne fd >|= swap64
       else syscall.read_int64_ne fd
   | Bequad ->
-      if Sys.big_endian
-      then syscall.read_int64_ne fd >|= swap64
+      if Sys.big_endian then syscall.read_int64_ne fd >|= swap64
       else syscall.read_int64_ne fd
   | s -> invalid_arg "Unsupported size %a" pp s

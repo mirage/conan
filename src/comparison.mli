@@ -30,3 +30,5 @@ val process : 'a Integer.t -> 'a -> 'a t -> bool
 val process_float : float -> float t -> bool
 
 val process_string : string -> string t -> bool
+
+val process_ptime : Ptime.Span.t -> Ptime.Span.t t -> bool

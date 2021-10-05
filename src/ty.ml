@@ -58,7 +58,8 @@ let serialize : type test v. Format.formatter -> (test, v) t -> unit =
   | Regex { case_insensitive; start; limit; kind } ->
       let serialize_kind ppf = function
         | `Byte -> Format.fprintf ppf "`Byte"
-        | `Line -> Format.fprintf ppf "`Line" in
+        | `Line -> Format.fprintf ppf "`Line"
+      in
       Format.fprintf ppf
         "@[<2>Conan.Ty.regex@ ~case_insensitive:%b ~start:%b@ ~limit:%LdL@ %a@]"
         case_insensitive start limit serialize_kind kind
@@ -81,7 +82,8 @@ let serialize : type test v. Format.formatter -> (test, v) t -> unit =
         | true, false -> Format.pp_print_string ppf "`Text"
         | false, true -> Format.pp_print_string ppf "`Binary"
         | _ -> assert false
-        (* XXX(dinosaure): should never occur! *) in
+        (* XXX(dinosaure): should never occur! *)
+      in
       Format.fprintf ppf
         "@[<2>Conan.Ty.search@ ~compact_whitespaces:%b@ ~optional_blank:%b@ \
          ~lower_case_insensitive:%b@ ~upper_case_insensitive:%b@ @[%a@]@ \
@@ -101,7 +103,8 @@ let serialize : type test v. Format.formatter -> (test, v) t -> unit =
       let serialize_endian ppf = function
         | `BE -> Format.pp_print_string ppf "`BE"
         | `LE -> Format.pp_print_string ppf "`LE"
-        | `NE -> Format.pp_print_string ppf "`NE" in
+        | `NE -> Format.pp_print_string ppf "`NE"
+      in
       Format.fprintf ppf
         "@[<2>Conan.Ty.numeric@ ~unsigned:%b@ ~endian:%a@ Conan.Integer.short \
          @[%a@]@]"
@@ -145,7 +148,8 @@ let serialize : type test v. Format.formatter -> (test, v) t -> unit =
         | `Local, `s64 -> Format.pp_print_string ppf "`Qldate"
         | `Window, `s64 -> Format.pp_print_string ppf "`Qwdate"
         | `Window, `s32 -> assert false
-        (* XXX(dinosaure): should never occur! *) in
+        (* XXX(dinosaure): should never occur! *)
+      in
       Format.fprintf ppf
         "@[<2>Conan.Ty.date@ @[%a@]@ @[<1>(Some@ %a)@]@ @[%a@]@]" serialize_type
         () serialize_endian endian
@@ -287,10 +291,11 @@ let pascal_string = Pascal_string
 let search ?(compact_whitespaces = false) ?(optional_blank = false)
     ?(lower_case_insensitive = false) ?(upper_case_insensitive = false) kind
     ?(trim = false) range ~pattern =
-  if Int64.of_int (String.length pattern) > range
-  then invalid_arg "Pattern can not be larger than the range" ;
+  if Int64.of_int (String.length pattern) > range then
+    invalid_arg "Pattern can not be larger than the range";
   let text, binary =
-    match kind with `Text -> (true, false) | `Binary -> (false, true) in
+    match kind with `Text -> (true, false) | `Binary -> (false, true)
+  in
   Search
     {
       compact_whitespaces;
@@ -331,7 +336,8 @@ let numeric :
         | `BE -> `BE
         | `LE -> `LE
         | `NE -> `NE
-        | _ -> invalid_arg "Invalid endian for short" in
+        | _ -> invalid_arg "Invalid endian for short"
+      in
       Short ({ unsigned }, a, endian)
   | Integer.Int32 -> Long ({ unsigned }, a, endian)
   | Integer.Int64 -> Quad ({ unsigned }, a, endian)
@@ -342,7 +348,8 @@ let date kind endian a =
     | Some `BE -> `BE
     | Some `LE -> `LE
     | Some `ME -> `ME
-    | None -> if Sys.big_endian then `BE else `LE in
+    | None -> if Sys.big_endian then `BE else `LE
+  in
   match kind with
   | `Date -> Date (`UTC, `s32, a, endian)
   | `Ldate -> Date (`Local, `s32, a, endian)
@@ -379,7 +386,8 @@ let read_float ({ bind; return } as scheduler) syscall fd endian =
     | `LE -> Size.lelong
     | `BE -> Size.belong
     | `ME -> assert false (* TODO *)
-    | `NE -> Size.long in
+    | `NE -> Size.long
+  in
   Size.read scheduler syscall fd size >>= function
   | Ok v ->
       let v = Int64.to_int32 v in
@@ -394,7 +402,8 @@ let read_double ({ bind; return } as scheduler) syscall fd endian =
     | `LE -> Size.lequad
     | `BE -> Size.bequad
     | `ME -> assert false (* TODO *)
-    | `NE -> Size.quad in
+    | `NE -> Size.quad
+  in
   Size.read scheduler syscall fd size >>= function
   | Ok v -> return (Ok (Int64.float_of_bits v))
   | Error _ as err -> return err
@@ -410,7 +419,8 @@ let process :
  fun ({ bind; return } as scheduler) syscall fd abs_offset ty ->
   let ( >>= ) = bind in
   let ( >?= ) x f =
-    x >>= function Ok x -> f x | Error err -> return (Error err) in
+    x >>= function Ok x -> f x | Error err -> return (Error err)
+  in
   let ( >|= ) x f = x >>= fun x -> return (f x) in
   match ty with
   | Default -> (return <.> ok) (Default : default)
@@ -457,16 +467,19 @@ let process :
                 let ropes =
                   Ropes.append
                     (Ropes.concat ~sep:newline acc)
-                    (Ropes.of_string newline) in
+                    (Ropes.of_string newline)
+                in
                 return (Ok ropes)
             | n ->
                 syscall.line fd >|= reword_error (fun err -> `Syscall err)
                 >?= fun (off, len, line) ->
-                go (Ropes.of_string ~off ~len line :: acc) (pred n) in
+                go (Ropes.of_string ~off ~len line :: acc) (pred n)
+          in
           go [] (max 0 (Int64.to_int limit)))
   | Byte ({ unsigned }, c) ->
       let size, converter, w =
-        (Size.byte, Char.chr <.> Int64.to_int, Integer.byte) in
+        (Size.byte, Char.chr <.> Int64.to_int, Integer.byte)
+      in
       syscall.seek fd abs_offset SET >|= reword_error (fun err -> `Syscall err)
       >?= fun () ->
       Size.read scheduler syscall fd size
@@ -478,7 +491,8 @@ let process :
         match endian with
         | `LE -> (Size.leshort, Int64.to_int, Integer.short)
         | `BE -> (Size.beshort, Int64.to_int, Integer.short)
-        | `NE -> (Size.short, Int64.to_int, Integer.short) in
+        | `NE -> (Size.short, Int64.to_int, Integer.short)
+      in
       syscall.seek fd abs_offset SET >|= reword_error (fun err -> `Syscall err)
       >?= fun () ->
       Size.read scheduler syscall fd size
@@ -491,7 +505,8 @@ let process :
         | `LE -> (Size.lelong, Int64.to_int32, Integer.int32)
         | `BE -> (Size.belong, Int64.to_int32, Integer.int32)
         | `NE -> (Size.long, Int64.to_int32, Integer.int32)
-        | `ME -> failwith "Middle-endian not supported" in
+        | `ME -> failwith "Middle-endian not supported"
+      in
       syscall.seek fd abs_offset SET >|= reword_error (fun err -> `Syscall err)
       >?= fun () ->
       Size.read scheduler syscall fd size
@@ -504,7 +519,8 @@ let process :
         | `LE -> (Size.lequad, id, Integer.int64)
         | `BE -> (Size.bequad, id, Integer.int64)
         | `NE -> (Size.quad, id, Integer.int64)
-        | `ME -> failwith "Middle-endian not supported" in
+        | `ME -> failwith "Middle-endian not supported"
+      in
       syscall.seek fd abs_offset SET >|= reword_error (fun err -> `Syscall err)
       >?= fun () ->
       Size.read scheduler syscall fd size
@@ -529,7 +545,8 @@ let process :
         | `BE -> Size.belong
         | `LE -> Size.lelong
         | `NE -> Size.long
-        | `ME -> assert false in
+        | `ME -> assert false
+      in
       syscall.seek fd abs_offset SET >|= reword_error (fun err -> `Syscall err)
       >?= fun () ->
       Size.read scheduler syscall fd size
@@ -545,7 +562,8 @@ let process :
         | `BE -> Size.bequad
         | `LE -> Size.lequad
         | `NE -> Size.quad
-        | `ME -> assert false in
+        | `ME -> assert false
+      in
       syscall.seek fd abs_offset SET >|= reword_error (fun err -> `Syscall err)
       >?= fun () ->
       Size.read scheduler syscall fd size

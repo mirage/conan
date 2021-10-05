@@ -2,7 +2,7 @@
  (name file)
  (modules file)
  (public_name conan.file)
- (libraries mtime mtime.clock.os conan_unix))
+ (libraries conan_unix))
 
 (executable
  (name serialize)

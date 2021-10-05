@@ -120,8 +120,7 @@ open Sub
 let parse s =
   let v = to_string s in
   let lexbuf = Lexing.from_string v in
-  if is_empty s
-  then Error `Empty
+  if is_empty s then Error `Empty
   else
     match Lexer.int lexbuf with
     | Ok v ->

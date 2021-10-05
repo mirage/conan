@@ -117,11 +117,12 @@ let process : type test v. (test, v) Ty.t -> test t -> v -> v option =
             | Ok acc, `Uchar v -> Ok (v :: acc)
             | (Error _ as err), _ -> err
             | _, `Malformed err -> Error err)
-          (Ok []) a in
+          (Ok []) a
+      in
       match a with
       | Ok a ->
           let buf = Buffer.create 0x16 in
-          List.iter (Uutf.Buffer.add_utf_16be buf) (List.rev a) ;
+          List.iter (Uutf.Buffer.add_utf_16be buf) (List.rev a);
           let a = Buffer.contents buf in
           if Comparison.process_string a c then Some a else None
       | _ -> None)
@@ -133,11 +134,12 @@ let process : type test v. (test, v) Ty.t -> test t -> v -> v option =
             | Ok acc, `Uchar v -> Ok (v :: acc)
             | (Error _ as err), _ -> err
             | _, `Malformed err -> Error err)
-          (Ok []) a in
+          (Ok []) a
+      in
       match a with
       | Ok a ->
           let buf = Buffer.create 0x16 in
-          List.iter (Uutf.Buffer.add_utf_16le buf) (List.rev a) ;
+          List.iter (Uutf.Buffer.add_utf_16le buf) (List.rev a);
           let a = Buffer.contents buf in
           if Comparison.process_string a c then Some a else None
       | _ -> None)
@@ -152,6 +154,11 @@ let process : type test v. (test, v) Ty.t -> test t -> v -> v option =
       | a :: _ -> Some (Ropes.of_string a)
       | exception Not_found -> None
       (* TODO: process the comparison. *))
+  | Date _, Date c -> (
+      match Ptime.of_rfc3339 a with
+      | Ok (a', _tz_offset_s, _) ->
+          if Comparison.process_ptime (Ptime.to_span a') c then Some a else None
+      | _ -> None)
   | Pascal_string, Numeric _ -> .
   | Search _, Numeric _ -> .
   | Default, Numeric _ -> .

@@ -1,7 +1,5 @@
 open Conan_unix
 
-let previous = ref (Mtime.of_uint64_ns 0L)
-
 let ( >>= ) x f = match x with Ok x -> f x | Error err -> Error err
 
 let run ?(fmt = `Usual) filename =
@@ -10,15 +8,15 @@ let run ?(fmt = `Usual) filename =
   | `Usual -> (
       match Conan.Metadata.output result with
       | Some output ->
-          Format.printf "%s: %s\n%!" filename output ;
+          Format.printf "%s: %s\n%!" filename output;
           Ok ()
       | None -> Error `Not_found)
-  | `MIME ->
-  match Conan.Metadata.mime result with
-  | None -> Error `Not_found
-  | Some mime ->
-      Format.printf "%s\n%!" mime ;
-      Ok ()
+  | `MIME -> (
+      match Conan.Metadata.mime result with
+      | None -> Error `Not_found
+      | Some mime ->
+          Format.printf "%s\n%!" mime;
+          Ok ())
 
 let pp_error ppf = function
   | #Conan.Parse.error as err -> Conan.Parse.pp_error ppf err
@@ -48,10 +46,10 @@ let exit_success = 0
 let exit_failure = 1
 
 let () =
-  Arg.parse spec anonymous_argument usage ;
+  Arg.parse spec anonymous_argument usage;
   match !filename with
   | None ->
-      Format.eprintf "%s" usage ;
+      Format.eprintf "%s" usage;
       exit exit_failure
   | Some filename -> (
       let fmt = if !mime then `MIME else `Usual in

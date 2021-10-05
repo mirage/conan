@@ -35,27 +35,23 @@ module Str = struct
   let _min_int = Int64.of_int min_int
 
   let seek t offset seek =
-    if offset > _max_int || offset < _min_int
-    then Error `Out_of_bound
+    if offset > _max_int || offset < _min_int then Error `Out_of_bound
     else
       let offset = Int64.to_int offset in
       match seek with
       | Conan.Sigs.SET ->
-          if offset >= 0 && offset < String.length t.contents
-          then (
-            t.seek <- offset ;
+          if offset >= 0 && offset < String.length t.contents then (
+            t.seek <- offset;
             Ok ())
           else Error `Out_of_bound
       | Conan.Sigs.CUR ->
-          if t.seek + offset < String.length t.contents
-          then (
-            t.seek <- t.seek + offset ;
+          if t.seek + offset < String.length t.contents then (
+            t.seek <- t.seek + offset;
             Ok ())
           else Error `Out_of_bound
       | Conan.Sigs.END ->
-          if String.length t.contents + offset > 0
-          then (
-            t.seek <- String.length t.contents + offset ;
+          if String.length t.contents + offset > 0 then (
+            t.seek <- String.length t.contents + offset;
             Ok ())
           else Error `Out_of_bound
 
@@ -84,7 +80,7 @@ module Str = struct
     | _ -> Error `Out_of_bound
 
   let rec index str chr pos limit =
-    if pos >= limit then raise Not_found ;
+    if pos >= limit then raise Not_found;
     if str.[pos] = chr then pos else index str chr (succ pos) limit
 
   let index str chr ~off ~len = index str chr off (off + len) - off
@@ -94,7 +90,7 @@ module Str = struct
       let len = min (String.length t.contents - t.seek) 80 in
       let off = t.seek in
       let pos = index t.contents '\n' ~off ~len in
-      t.seek <- t.seek + (pos - off) ;
+      t.seek <- t.seek + (pos - off);
       Ok (off, pos, t.contents)
     with _ -> Error `Out_of_bound
 
@@ -118,11 +114,34 @@ end
 
 open Conan
 
+let tree_of_string str =
+  let lines = String.split_on_char '\n' str in
+  let lines =
+    let rec go acc = function
+      | [] -> Ok (List.rev acc)
+      | line :: r -> (
+          match Parse.parse_line line with
+          | Ok v -> go (v :: acc) r
+          | Error _ as err -> err)
+    in
+    go [] lines
+  in
+  match lines with
+  | Ok lines ->
+      let _, tree =
+        List.fold_left
+          (fun (line, tree) v -> (succ line, Tree.append ~line tree v))
+          (1, Tree.empty) lines
+      in
+      Ok tree
+  | Error err -> Error (`Msg (Format.asprintf "%a" Parse.pp_error err))
+
 let run ~database contents =
   let result =
     let fd = Str.openfile contents in
     let rs =
       Caml_scheduler.prj (Process.descending_walk caml Str.syscall fd database)
     in
-    rs in
+    rs
+  in
   Ok result

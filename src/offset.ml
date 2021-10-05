@@ -54,7 +54,8 @@ let process :
  fun ({ bind; return } as scheduler) syscall fd offset abs_offset ->
   let ( >>= ) = bind in
   let ( >?= ) x f =
-    x >>= function Ok x -> f x | Error err -> return (Error err) in
+    x >>= function Ok x -> f x | Error err -> return (Error err)
+  in
   (* XXX(dinosaure): we want to calculate at any steps the absolute offset
      instead to trust on [CUR] and we try to use only [SET] with [seek].
      However, in some case (eg. [offset use name]), we must lie about the

@@ -1,5 +1,3 @@
-module Log = (val Logs.src_log (Logs.Src.create "conan-process"))
-
 let invalid_arg fmt = Format.kasprintf invalid_arg fmt
 
 let reword_error f = function Ok _ as v -> v | Error err -> Error (f err)
@@ -7,17 +5,20 @@ let reword_error f = function Ok _ as v -> v | Error err -> Error (f err)
 open Sigs
 
 let process_fmt :
-    type v. Metadata.t -> (_, v) Ty.t -> v Tree.fmt -> v -> Metadata.t =
- fun m _ tree_fmt v ->
-  let buf = Buffer.create 16 in
-  let ppf = Format.formatter_of_buffer buf in
-  Fmt.keval Pps.v ppf
-    Fmt.([ String Nop ] ^^ Tree.fmt tree_fmt ())
-    (fun ppf ->
-      Format.fprintf ppf "%!" ;
-      Metadata.with_output (Buffer.contents buf) m)
-    (Option.value ~default:"" (Metadata.output m))
-    v
+    type test v. Metadata.t -> (test, v) Ty.t -> v Tree.fmt -> v -> Metadata.t =
+ fun m t tree_fmt v ->
+  match t with
+  | Ty.Clear -> Metadata.clear m
+  | _ ->
+      let buf = Buffer.create 16 in
+      let ppf = Format.formatter_of_buffer buf in
+      Fmt.keval Pps.v ppf
+        Fmt.([ String Nop ] ^^ Tree.fmt tree_fmt ())
+        (fun ppf ->
+          Format.fprintf ppf "%!";
+          Metadata.with_output (Buffer.contents buf) m)
+        (Option.value ~default:"" (Metadata.output m))
+        v
 
 let process :
     type s fd error.
@@ -33,8 +34,6 @@ let process :
       s )
     io =
  fun ({ bind; return } as scheduler) syscall fd abs_offset metadata operation ->
-  Log.debug (fun m -> m "Process the operation: %a" Tree.pp_operation operation) ;
-  Log.debug (fun m -> m "Current metadata: %a" Metadata.pp metadata) ;
   match operation with
   | Tree.Name _ -> return (Error `No_process)
   | Tree.Use _ -> return (Error `No_process)
@@ -43,16 +42,14 @@ let process :
       let ( >>= ) = bind in
       let ( >|= ) x f = x >>= fun x -> return (f x) in
       let ( >?= ) x f =
-        x >>= function Ok x -> f x | Error err -> return (Error err) in
+        x >>= function Ok x -> f x | Error err -> return (Error err)
+      in
       Offset.process scheduler syscall fd offset abs_offset
       >|= reword_error (fun err -> `Syscall err)
       >?= fun abs_offset ->
       Ty.process scheduler syscall fd abs_offset ty >?= fun v ->
-      Log.debug (fun m -> m "Test %a %a." Test.pp test (Ty.pp_of_result ty) v) ;
       match Test.process ty test v with
       | Some v ->
-          let pp = Ty.pp_of_result ty in
-          Log.debug (fun m -> m "Test pass with %a!" pp v) ;
           let metadata = process_fmt metadata ty fmt v in
           return (Ok (abs_offset, metadata))
       | None -> return (Error `Invalid_test))
@@ -66,7 +63,8 @@ let descending_walk ({ bind; return } as scheduler) syscall db fd abs_offset
     | Tree.Done -> return candidate0
     | Tree.Node lst ->
         let lst =
-          List.rev_map (fun (elt, sub) -> (Tree.operation elt, sub)) lst in
+          List.rev_map (fun (elt, sub) -> (Tree.operation elt, sub)) lst
+        in
         iter ~level [] syscall abs_offset candidate0 lst
   and iter ~level results syscall abs_offset candidate1 = function
     | [] -> return candidate1
@@ -76,9 +74,10 @@ let descending_walk ({ bind; return } as scheduler) syscall db fd abs_offset
         Offset.process scheduler syscall fd offset abs_offset >>= function
         | Ok shift ->
             let seek fd abs_offset where =
-              syscall.seek fd (Int64.add abs_offset shift) where in
-            if not (Hashtbl.mem db name)
-            then invalid_arg "%s does not exist" name ;
+              syscall.seek fd (Int64.add abs_offset shift) where
+            in
+            if not (Hashtbl.mem db name) then
+              invalid_arg "%s does not exist" name;
             let tree = Hashtbl.find db name in
             go { syscall with seek } ~level:(succ level) 0L
               (* XXX(dinosaure): or [abs_offset]? *) candidate1 tree
@@ -89,9 +88,10 @@ let descending_walk ({ bind; return } as scheduler) syscall db fd abs_offset
         Offset.process scheduler syscall fd offset abs_offset >>= function
         | Ok shift ->
             let seek fd abs_offset where =
-              syscall.seek fd (Int64.add abs_offset shift) where in
-            if not (Hashtbl.mem db name)
-            then invalid_arg "%s does not exist" name ;
+              syscall.seek fd (Int64.add abs_offset shift) where
+            in
+            if not (Hashtbl.mem db name) then
+              invalid_arg "%s does not exist" name;
             let tree = Hashtbl.find db name in
             go
               (Size.invert scheduler { syscall with seek })
@@ -104,7 +104,8 @@ let descending_walk ({ bind; return } as scheduler) syscall db fd abs_offset
         Offset.process scheduler syscall fd offset abs_offset >>= function
         | Ok shift ->
             let seek fd abs_offset where =
-              syscall.seek fd (Int64.add abs_offset shift) where in
+              syscall.seek fd (Int64.add abs_offset shift) where
+            in
             let metadata = Metadata.empty in
             go { syscall with seek } ~level:(succ level) abs_offset metadata
               root
@@ -126,9 +127,6 @@ let descending_walk ({ bind; return } as scheduler) syscall db fd abs_offset
                 iter ~level (candidate3 :: results) syscall abs_offset
                   candidate3 rest
             | Error _ -> iter ~level [] syscall abs_offset candidate1 rest))
-    | ((Tree.Rule (_, Ty.Clear, _, _) as _operation), _) :: rest ->
-        iter ~level [] syscall abs_offset candidate1 rest
-        (* TODO: compute [operation]? *)
     | (operation, tree) :: rest -> (
         process scheduler syscall fd abs_offset candidate1 operation
         >>= function
@@ -151,18 +149,23 @@ let rec fill_db db = function
         | (Tree.Name (_, name), tree) :: rest ->
             (* XXX(dinosaure): /offset/ name value
                should appear only at the first level. *)
-            Hashtbl.add db name tree ;
-            fill_db db tree ;
+            Hashtbl.add db name tree;
+            fill_db db tree;
             go rest
         | (_, tree) :: rest ->
-            fill_db db tree ;
-            go rest in
+            fill_db db tree;
+            go rest
+      in
       go (List.rev_map (fun (elt, sub) -> (Tree.operation elt, sub)) lst)
 
 let database ~tree : database =
   let db = Hashtbl.create 0x10 in
-  fill_db db tree ;
+  fill_db db tree;
   (db, tree)
+
+let append ~tree (db, tree') : database =
+  fill_db db tree;
+  (db, Tree.merge tree tree')
 
 let descending_walk scheduler syscall fd (db, tree) =
   descending_walk scheduler syscall db fd 0L Metadata.empty tree
@@ -175,23 +178,26 @@ let rec ascending_walk ({ bind; return } as scheduler) syscall db fd results
   | _, candidate, Tree.Done ->
       ascending_walk scheduler syscall db fd (candidate :: results) queue
   | abs_offset, candidate, Tree.Node lst ->
-      let lst = List.rev_map (fun (elt, sub) -> (Tree.operation elt, sub)) lst in
+      let lst =
+        List.rev_map (fun (elt, sub) -> (Tree.operation elt, sub)) lst
+      in
       let rec go candidate = function
         | [] -> return ()
         | (Tree.Name (_, name), tree) :: rest ->
-            Hashtbl.add db name tree ;
+            Hashtbl.add db name tree;
             go candidate rest
         | (Tree.Use { name; _ }, Tree.Done) :: rest ->
             let tree = Hashtbl.find db name in
-            Queue.push (abs_offset, candidate, tree) queue ;
+            Queue.push (abs_offset, candidate, tree) queue;
             go candidate rest
         | (operation, tree) :: rest -> (
             process scheduler syscall fd abs_offset candidate operation
             >>= function
             | Ok (abs_offset, candidate) ->
-                Queue.push (abs_offset, candidate, tree) queue ;
+                Queue.push (abs_offset, candidate, tree) queue;
                 go candidate rest
-            | Error _ -> go candidate rest) in
+            | Error _ -> go candidate rest)
+      in
       go candidate lst >>= fun () ->
       ascending_walk scheduler syscall db fd results queue
   | exception Queue.Empty -> return (List.rev results)
@@ -199,5 +205,5 @@ let rec ascending_walk ({ bind; return } as scheduler) syscall db fd results
 let ascending_walk scheduler syscall fd tree =
   let queue = Queue.create () in
   let db = Hashtbl.create 0x10 in
-  Queue.push (0L, Metadata.empty, tree) queue ;
+  Queue.push (0L, Metadata.empty, tree) queue;
   ascending_walk scheduler syscall db fd [] queue

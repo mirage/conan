@@ -48,21 +48,18 @@ module File = struct
 
   let seek t offset = function
     | Sigs.SET ->
-        if offset < t.max
-        then (
-          t.seek <- offset ;
+        if offset < t.max then (
+          t.seek <- offset;
           Ok ())
         else Error `Out_of_bound
     | Sigs.CUR ->
-        if Int64.add t.seek offset < t.max
-        then (
-          t.seek <- Int64.add t.seek offset ;
+        if Int64.add t.seek offset < t.max then (
+          t.seek <- Int64.add t.seek offset;
           Ok ())
         else Error `Out_of_bound
     | Sigs.END ->
-        if Int64.add t.max offset > 0L
-        then (
-          t.seek <- Int64.sub t.max offset ;
+        if Int64.add t.max offset > 0L then (
+          t.seek <- Int64.sub t.max offset;
           Ok ())
         else Error `Out_of_bound
 
@@ -71,62 +68,61 @@ module File = struct
     let off = Unix.LargeFile.lseek t.fd off Unix.SEEK_SET in
     let len = min (Int64.sub t.max off) 255L in
     let len = Int64.to_int len in
-    if off < 0L || len = 0
-    then None
+    if off < 0L || len = 0 then None
     else
       try
         let buf = Bytes.create len in
         let _ = Unix.read t.fd buf 0 len in
         let cell = (off, len, Bytes.unsafe_to_string buf) in
-        Weak.set t.table (t.cur land 0xff) (Some cell) ;
-        t.cur <- t.cur + 1 ;
+        Weak.set t.table (t.cur land 0xff) (Some cell);
+        t.cur <- t.cur + 1;
         Some cell
       with _ -> None
 
   exception Found of (int64 * int * string)
 
   let find ~seek t =
-    if seek >= t.max || seek < 0L
-    then None
+    if seek >= t.max || seek < 0L then None
     else
       try
         for i = 0 to Weak.length t.table - 1 do
           match Weak.get t.table i with
           | Some (off, len, payload) ->
-              if seek >= off && (len - Int64.(to_int (sub seek off))) > 0
-              then raise_notrace (Found (off, len, payload))
+              if seek >= off && (len - Int64.(to_int (sub seek off))) > 0 then
+                raise_notrace (Found (off, len, payload))
           | _ -> ()
-        done ;
+        done;
         load ~seek t
       with Found (off, len, payload) -> Some (off, len, payload)
 
   let read t required =
-    if required < 256
-    then
+    if required < 256 then
       let rec go acc ~seek required =
         match find ~seek t with
         | Some (off, len, payload) ->
             let sub_off = Int64.to_int (Int64.sub seek off) in
             let sub_len = len - sub_off in
 
-            if sub_len >= required
-            then List.rev ((sub_off, sub_len, payload) :: acc)
+            if sub_len >= required then
+              List.rev ((sub_off, sub_len, payload) :: acc)
             else
               go
                 ((sub_off, sub_len, payload) :: acc)
                 ~seek:Int64.(add seek (of_int sub_len))
                 (required - sub_len)
-        | None -> List.rev acc in
+        | None -> List.rev acc
+      in
       let ps = go [] ~seek:t.seek required in
       let buf = Buffer.create 255 in
       let rec concat = function
         | [] ->
-            if Buffer.length buf > 0
-            then Some (0, Buffer.length buf, Buffer.contents buf)
+            if Buffer.length buf > 0 then
+              Some (0, Buffer.length buf, Buffer.contents buf)
             else None
         | (off, len, payload) :: rest ->
-            Buffer.add_substring buf payload off len ;
-            concat rest in
+            Buffer.add_substring buf payload off len;
+            concat rest
+      in
       concat ps
     else
       let buf = Bytes.create required in
@@ -155,9 +151,8 @@ module File = struct
     | _ -> Error `Out_of_bound
 
   let rec index buf chr pos limit =
-    if pos >= limit then raise Not_found ;
-    if Bytes.unsafe_get buf pos = chr
-    then pos
+    if pos >= limit then raise Not_found;
+    if Bytes.unsafe_get buf pos = chr then pos
     else index buf chr (succ pos) limit
 
   let index buf chr ~off ~len = index buf chr off (off + len) - off
@@ -166,15 +161,14 @@ module File = struct
     let len' = Unix.read t.fd t.tmp 0 (Bytes.length t.tmp) in
     try
       let pos = index t.tmp '\n' ~off:0 ~len:len' in
-      t.seek <- Int64.add t.seek (Int64.of_int pos) ;
+      t.seek <- Int64.add t.seek (Int64.of_int pos);
       Ok (0, pos, Bytes.unsafe_to_string t.tmp)
     with _ -> Error `Out_of_bound
 
   let read t required =
     match read t required with
     | Some (off, len, payload) ->
-        if len >= required
-        then Ok (String.sub payload off required)
+        if len >= required then Ok (String.sub payload off required)
         else Error `Out_of_bound
     | None -> Error `Out_of_bound
 
@@ -201,19 +195,43 @@ let fill_tree database =
     | filename :: rest -> (
         let ic = open_in (database / filename) in
         let rs = Parse.parse_in_channel ic in
-        close_in ic ;
+        close_in ic;
         match rs with
         | Ok lines ->
             let _, tree =
               List.fold_left
                 (fun (line, tree) v ->
                   (succ line, Tree.append ~filename ~line tree v))
-                (1, tree) lines in
+                (1, tree) lines
+            in
             go tree rest
-        | _ -> go tree rest) in
+        | _ -> go tree rest)
+  in
   go Tree.empty files
 
-let database ~directory = fill_tree directory
+let tree ~directory = fill_tree directory
+
+let tree_of_string str =
+  let lines = String.split_on_char '\n' str in
+  let lines =
+    let rec go acc = function
+      | [] -> Ok (List.rev acc)
+      | line :: r -> (
+          match Parse.parse_line line with
+          | Ok v -> go (v :: acc) r
+          | Error _ as err -> err)
+    in
+    go [] lines
+  in
+  match lines with
+  | Ok lines ->
+      let _, tree =
+        List.fold_left
+          (fun (line, tree) v -> (succ line, Tree.append ~line tree v))
+          (1, Tree.empty) lines
+      in
+      Ok tree
+  | Error err -> Error (`Msg (Format.asprintf "%a" Parse.pp_error err))
 
 let run_with_tree tree filename =
   let database = Process.database ~tree in
@@ -222,23 +240,24 @@ let run_with_tree tree filename =
     let rs =
       Unix_scheduler.prj (Process.descending_walk unix File.syscall fd database)
     in
-    File.close fd ;
-    rs in
+    File.close fd;
+    rs
+  in
   Ok result
 
 let run ~database filename =
-  if Sys.file_exists filename
-  then
+  if Sys.file_exists filename then
     let tree = fill_tree database in
     let database = Process.database ~tree in
     let result =
       let fd = File.openfile filename in
       let rs =
         Unix_scheduler.prj
-          (Process.descending_walk unix File.syscall fd database) in
-      File.close fd ;
-      rs in
+          (Process.descending_walk unix File.syscall fd database)
+      in
+      File.close fd;
+      rs
+    in
     Ok result
-  else if Sys.file_exists filename
-  then error_msgf "%s does not exist" database
+  else if Sys.file_exists filename then error_msgf "%s does not exist" database
   else error_msgf "%s does not exist" filename

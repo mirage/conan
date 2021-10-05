@@ -29,17 +29,16 @@ let to_byte = function
 
 let to_ptime = function
   | Int v -> Ptime.Span.of_int_s (Int64.to_int v)
-  | Float v ->
-  match Ptime.Span.of_float_s v with
-  | Some v -> v
-  | None -> Fmt.invalid_arg "Invalid POSIX time value: %f" v
+  | Float v -> (
+      match Ptime.Span.of_float_s v with
+      | Some v -> v
+      | None -> Fmt.invalid_arg "Invalid POSIX time value: %f" v)
 
 let parse s =
   let open Sub in
   let v = to_string s in
   let lexbuf = Lexing.from_string v in
-  if is_empty s
-  then Error `Empty
+  if is_empty s then Error `Empty
   else
     match Lexer.int_or_float lexbuf with
     | Ok (`Int literal) -> (

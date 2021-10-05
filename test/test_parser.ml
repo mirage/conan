@@ -17,9 +17,10 @@ let test_tree filename =
       let _tree =
         List.fold_left
           (fun (i, acc) line ->
-            Format.eprintf "Append line %d.\n%!" i ;
+            Format.eprintf "Append line %d.\n%!" i;
             (succ i, Tree.append acc line))
-          (1, Tree.empty) lst in
+          (1, Tree.empty) lst
+      in
       Alcotest.(check pass) "tree" () ()
   | Error err -> Alcotest.failf "%a" Parse.pp_error err
 

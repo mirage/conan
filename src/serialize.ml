@@ -7,18 +7,15 @@ let fmt fmt ppf = Format.fprintf ppf fmt
 let char ppf chr = Format.fprintf ppf "'\\%03d'" (Char.code chr)
 
 let int ppf n =
-  if n >= 0
-  then Format.fprintf ppf "%d" n
+  if n >= 0 then Format.fprintf ppf "%d" n
   else Format.fprintf ppf "@[<1>(%d)@]" n
 
 let int32 ppf n =
-  if n >= 0l
-  then Format.fprintf ppf "%ldl" n
+  if n >= 0l then Format.fprintf ppf "%ldl" n
   else Format.fprintf ppf "@[<1>(%ldl)@]" n
 
 let int64 ppf n =
-  if n >= 0L
-  then Format.fprintf ppf "%LdL" n
+  if n >= 0L then Format.fprintf ppf "%LdL" n
   else Format.fprintf ppf "@[<1>(%LdL)@]" n
 
 let float ppf n = Format.fprintf ppf "%f" n
@@ -35,14 +32,14 @@ let option pp ppf = function
 
 let box ?(indent = 0) pp ppf v =
   Format.(
-    pp_open_box ppf indent ;
-    pp ppf v ;
+    pp_open_box ppf indent;
+    pp ppf v;
     pp_close_box ppf ())
 
 let surround s0 s1 pp ppf v =
   Format.(
-    pp_print_string ppf s0 ;
-    pp ppf v ;
+    pp_print_string ppf s0;
+    pp ppf v;
     pp_print_string ppf s1)
 
 let brackets pp = box ~indent:1 (surround "[" "]" pp)
@@ -52,12 +49,13 @@ let parens pp = box ~indent:1 (surround "(" ")" pp)
 let iter ?sep:(pp_sep = cut) iter pp ppf v =
   let is_first = ref true in
   let pp v =
-    if !is_first then is_first := false else pp_sep ppf () ;
-    pp ppf v in
+    if !is_first then is_first := false else pp_sep ppf ();
+    pp ppf v
+  in
   iter pp v
 
 let ( ++ ) pp0 pp1 ppf v =
-  pp0 ppf v ;
+  pp0 ppf v;
   pp1 ppf v
 
 let using f pp ppf v = pp ppf (f v)
@@ -65,11 +63,11 @@ let using f pp ppf v = pp ppf (f v)
 let list ?sep pp = iter ?sep List.iter pp
 
 let semi ppf _ =
-  Format.pp_print_string ppf ";" ;
+  Format.pp_print_string ppf ";";
   Format.pp_print_space ppf ()
 
 let comma ppf _ =
-  Format.pp_print_string ppf "," ;
+  Format.pp_print_string ppf ",";
   Format.pp_print_space ppf ()
 
 let list pp = brackets (list ~sep:semi (box pp))
@@ -81,12 +79,12 @@ module Re_serialize = struct
     let len = ref 0 in
     let lst = ref [] in
     Re__Cset.iter cset ~f:(fun chr _chr' ->
-        lst := chr :: !lst ;
-        incr len) ;
+        lst := chr :: !lst;
+        incr len);
     let res = Bytes.create !len in
     List.iteri
       (fun pos chr -> Bytes.set res pos (Char.chr (chr land 0xff)))
-      !lst ;
+      !lst;
     Format.fprintf ppf "@[<2>Re.set@ %S@]" (Bytes.unsafe_to_string res)
 
   and sequence ppf lst =

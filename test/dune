@@ -1,4 +1,9 @@
 (executable
+ (name test_file)
+ (modules test_file)
+ (libraries conan conan.string rresult alcotest))
+
+(executable
  (name test_parser)
  (modules test_parser)
  (libraries conan alcotest))

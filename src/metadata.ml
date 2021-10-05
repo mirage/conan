@@ -12,8 +12,7 @@ let pp ppf t =
 let with_mime mime t = { t with mime = Some mime }
 
 let with_output output t =
-  if output <> ""
-  then
+  if output <> "" then
     match t.output with
     | Some _ -> { t with output = Some output }
     | None when output.[0] = ' ' ->
@@ -26,6 +25,8 @@ let with_output output t =
 
 let output { output; _ } = output
 
+let clear { mime; _ } = { output = None; mime }
+
 let mime { mime; _ } = mime
 
 let empty = { output = None; mime = None }
@@ -36,11 +37,13 @@ let concat a0 a1 =
     | None, Some v -> Some v
     | Some v, None -> Some v
     | Some a, Some b -> Some (a ^ b)
-    | None, None -> None in
+    | None, None -> None
+  in
   let mime =
     match (a0.mime, a1.mime) with
     | None, Some v -> Some v
     | Some v, None -> Some v
     | Some v, Some _ -> Some v
-    | None, None -> None in
+    | None, None -> None
+  in
   { output; mime }

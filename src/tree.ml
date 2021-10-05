@@ -106,8 +106,9 @@ let pp_level ppf n =
   let rec go = function
     | 0 -> ()
     | n ->
-        pf ppf ">" ;
-        go (pred n) in
+        pf ppf ">";
+        go (pred n)
+  in
   go (max n 0)
 
 let pp ppf tree =
@@ -116,9 +117,11 @@ let pp ppf tree =
     | Node lst ->
         let lst = List.rev lst in
         let iter (rule, tree) =
-          pf ppf "%a%a\n%!" pp_level level pp_operation_with_debug rule ;
-          go (succ level) tree in
-        List.iter iter lst in
+          pf ppf "%a%a\n%!" pp_level level pp_operation_with_debug rule;
+          go (succ level) tree
+        in
+        List.iter iter lst
+  in
   go 0 tree
 
 let system_long = Size.long
@@ -126,7 +129,8 @@ let system_long = Size.long
 let indirect_1 ?(size = system_long) v =
   let f = function
     | `Dir v -> Offset.Value v
-    | `Ind v -> Offset.(Relative (Read (Value v, size))) in
+    | `Ind v -> Offset.(Relative (Read (Value v, size)))
+  in
   Arithmetic.map ~f v
 
 let indirect_0 (return, (offset, size, disp)) =
@@ -141,7 +145,8 @@ let indirect_0 (return, (offset, size, disp)) =
         Calculation (Relative (Value offset), calculation)
     | Some disp, `Abs offset ->
         let calculation = indirect_1 ~size disp in
-        Calculation (Absolute (Value offset), calculation) in
+        Calculation (Absolute (Value offset), calculation)
+  in
   match return with
   | `Rel -> Relative (Read (offset, size))
   | `Abs -> Absolute (Read (offset, size))
@@ -169,24 +174,20 @@ let rec force_to_use_any_formatter s =
   let open Sub in
   match cut ~sep:percent s with
   | None -> None
-  | Some (x, r) ->
-  match head r with
-  | None -> None
-  | Some '%' -> (
-      match force_to_use_any_formatter (tail r) with
+  | Some (x, r) -> (
+      match head r with
       | None -> None
-      | Some r -> Some (to_string x ^ "%%" ^ r))
-  | _ ->
-      let flags, r = span ~sat:Fmt.is_flag r in
-      let padding, r = span ~sat:Fmt.is_digit r in
-      let r = tail r in
-      Some
-        (to_string x
-        ^ "%"
-        ^ to_string flags
-        ^ to_string padding
-        ^ "!"
-        ^ to_string r)
+      | Some '%' -> (
+          match force_to_use_any_formatter (tail r) with
+          | None -> None
+          | Some r -> Some (to_string x ^ "%%" ^ r))
+      | _ ->
+          let flags, r = span ~sat:Fmt.is_flag r in
+          let padding, r = span ~sat:Fmt.is_digit r in
+          let r = tail r in
+          Some
+            (to_string x ^ "%" ^ to_string flags ^ to_string padding ^ "!"
+           ^ to_string r))
 
 let key_of_ty : type test v. string -> (test, v) Ty.t -> v Fmt.Hmap.Key.key =
  fun message ty0 ->
@@ -205,9 +206,11 @@ let format_of_ty : type test v. (test, v) Ty.t -> _ -> (v -> 'r, 'r) Fmt.fmt =
     match message with
     | `No_space message -> (false, message)
     | `Space "" -> (false, "")
-    | `Space message -> (true, message) in
+    | `Space message -> (true, message)
+  in
   let with_space fmt =
-    if not with_space then fmt else Fmt.((pp_string $ " ") :: fmt) in
+    if not with_space then fmt else Fmt.((pp_string $ " ") :: fmt)
+  in
   let any = Fmt.Hmap.Key.create () in
   try
     match ty with
@@ -248,7 +251,8 @@ let padding_of_string_format : type test v. (test, v) Ty.t -> _ -> int option =
     | padding, [] -> padding
     | None, String (Lit (_, n)) :: fmt -> go (Some n) fmt
     | Some n, String (Lit (_, m)) :: fmt -> go (Some (max n m)) fmt
-    | padding, _ :: fmt -> go padding fmt in
+    | padding, _ :: fmt -> go padding fmt
+  in
   go None fmt
 
 (* TODO: "\\0" -> "\000", it's an hack! *)
@@ -259,7 +263,8 @@ let normalize_regex str =
     | Some (a, b) ->
         let b = go b in
         Sub.concat [ a; Sub.v "\000"; b ]
-    | None -> str in
+    | None -> str
+  in
   Sub.to_string (go (Sub.v str))
 
 type date = [ `Date | `Ldate | `Qdate | `Qldate | `Qwdate ]
@@ -297,7 +302,8 @@ let rule : Parse.rule -> operation =
           with
           | true, true, false | true, false, false | false, true, false ->
               `Binary
-          | _, _, _ -> `Text in
+          | _, _, _ -> `Text
+        in
         Ty
           (Ty.search ~compact_whitespaces ~optional_blank
              ~lower_case_insensitive ~upper_case_insensitive ~trim kind
@@ -338,7 +344,8 @@ let rule : Parse.rule -> operation =
         Ty
           (Ty.float ~unsigned
              ?endian:(endian :> Ty.endian option)
-             (calculation ~cast c)) in
+             (calculation ~cast c))
+  in
   let (Test test) =
     match (test, ty) with
     | `True, _ -> Test Test.always_true
@@ -383,7 +390,8 @@ let rule : Parse.rule -> operation =
     | `String c, ty ->
         let v = Comparison.value c in
         invalid_arg "Impossible to test a string (%S) with the given type: %a" v
-          Ty.pp ty in
+          Ty.pp ty
+  in
   let make : type test0 test1 v. test0 Test.t -> (test1, v) Ty.t -> operation =
    fun test ty ->
     match (test, ty) with
@@ -422,7 +430,8 @@ let rule : Parse.rule -> operation =
         let range =
           match padding_of_string_format ty message with
           | Some n -> max range (Int64.of_int n)
-          | None -> range in
+          | None -> range
+        in
         Rule
           ( offset,
             (Ty.with_range range <.> Ty.with_pattern pattern) ty,
@@ -496,7 +505,8 @@ let rule : Parse.rule -> operation =
             { fmt = (fun () -> format_of_ty ty message); str = message } )
     | test, ty ->
         invalid_arg "Impossible to operate a test (%a) on the given value (%a)"
-          Test.pp test Ty.pp ty in
+          Test.pp test Ty.pp ty
+  in
   make test ty
 
 let name : _ -> operation =
@@ -545,11 +555,9 @@ let append tree ?filename ?line:n (line : Parse.line) =
       let max = depth_left tree in
       let level, operation = operation ~max line in
       let operation = operation_with_debug ?filename ?line:n operation in
-      if level <= left tree
-      then
+      if level <= left tree then
         let rec go cur tree =
-          if cur = level
-          then
+          if cur = level then
             match tree with
             | Done -> Node [ (operation, Done) ]
             | Node l -> Node ((operation, Done) :: l)
@@ -558,7 +566,8 @@ let append tree ?filename ?line:n (line : Parse.line) =
             | Done | Node [] -> Node [ (operation, Done) ]
             | Node ((x, hd) :: tl) ->
                 let hd = go (succ cur) hd in
-                Node ((x, hd) :: tl) in
+                Node ((x, hd) :: tl)
+        in
         go 0 tree
       else tree
   | _ -> tree
