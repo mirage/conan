@@ -6,6 +6,6 @@
   >  (libraries conan conan.unix))
   > EOF
   $ cat >dune-project <<EOF
-  > (lang dune 2.0)
+  > (lang dune 2.3)
   > EOF
-  $ dune build ./conan_database.exe 2> /dev/null
+  $ dune build ./conan_database.exe
