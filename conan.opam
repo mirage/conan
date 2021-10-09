@@ -24,6 +24,7 @@ depends: [
   "lwt"
   "uutf"
   "crowbar" {>= "0.2" & with-test}
+  "rresult" {with-test}
 ]
 build: [
   ["dune" "subst"] {pinned}
