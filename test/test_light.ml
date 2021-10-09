@@ -21,4 +21,8 @@ let test00 =
     (String.concat "" simple_gzip)
     (Some "application/gzip")
 
-let () = Alcotest.run "file" [ ("simple", [ test00 ]) ]
+let test01 =
+  make_simple_test ~name:"test01 (zlib)"
+    "\x78\x9c\x4b\xcb\xcf\x07\x00\x02\x82\x01\x45" (Some "application/zlib")
+
+let () = Alcotest.run "file" [ ("simple", [ test00; test01 ]) ]
