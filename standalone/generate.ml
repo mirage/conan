@@ -30,6 +30,7 @@ let run database output =
     in
     go []
   in
+  let modules = List.sort String.compare modules in
   let oc = open_out "dune.inc.gen" in
   let ppf = Format.formatter_of_out_channel oc in
   Format.fprintf ppf
