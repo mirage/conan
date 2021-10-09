@@ -22,6 +22,8 @@ type operation = private
 
 val pp_operation : Format.formatter -> operation -> unit
 
+val serialize_operation : Format.formatter -> operation -> unit
+
 val operation : elt -> operation
 
 val fmt : 'a fmt -> unit -> ('a -> 'r, 'r) Fmt.fmt

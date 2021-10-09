@@ -210,9 +210,12 @@ let only_mime_paths (db, tree) =
           List.rev_map (fun (elt, sub) -> (Tree.operation elt, sub)) lst
         in
         let f acc (operation, sub) =
-          if has_mime_tag (db, sub) then
-            (Tree.Unsafe.elt operation, go sub) :: acc
-          else acc
+          let sub = go sub in
+          let sub_has_mime_tag = has_mime_tag (db, sub) in
+          match operation with
+          | Tree.MIME _ -> (Tree.Unsafe.elt operation, sub) :: acc
+          | _ when sub_has_mime_tag -> (Tree.Unsafe.elt operation, sub) :: acc
+          | _ -> acc
         in
         Tree.Unsafe.node (List.fold_left f [] lst)
   in

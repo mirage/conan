@@ -4,6 +4,11 @@
  (libraries conan conan.string rresult alcotest))
 
 (executable
+ (name test_light)
+ (modules test_light)
+ (libraries conan conan.string conan.light rresult alcotest))
+
+(executable
  (name test_parser)
  (modules test_parser)
  (libraries conan alcotest))
@@ -21,3 +26,17 @@
   (source_tree ../database)
   %{bin:conan.file}
   (package conan)))
+
+(rule
+ (alias runtest)
+ (deps
+  (:test test_file.exe))
+ (action
+  (run %{test} --color=always)))
+
+(rule
+ (alias runtest)
+ (deps
+  (:test test_light.exe))
+ (action
+  (run %{test} --color=always)))
