@@ -1,3 +1,5 @@
+let name = ref "conan_database.ml"
+
 let ( / ) = Filename.concat
 
 let identity x = x
@@ -50,7 +52,7 @@ let serialize_into_multiple_files output filename tree =
     (List.init (List.length elts) identity);
   close_out oc
 
-let serialize database output filename =
+let serialize only_mime database output filename =
   let ic = open_in (database / filename) in
   let rs = Conan.Parse.parse_in_channel ic in
   close_in ic;
@@ -61,6 +63,11 @@ let serialize database output filename =
           (fun (line, tree) v ->
             (succ line, Conan.Tree.append ~filename ~line tree v))
           (1, Conan.Tree.empty) lines
+      in
+      let tree =
+        if only_mime then
+          Conan.Process.only_mime_paths (Conan.Process.database ~tree)
+        else tree
       in
       if Conan.Tree.weight tree >= 2000 then
         serialize_into_multiple_files output filename tree
@@ -77,7 +84,7 @@ let serialize database output filename =
       Format.fprintf ppf "let tree = Conan.Tree.empty\n%!";
       close_out oc
 
-let simulate database output filename =
+let simulate only_mime database output filename =
   let ic = open_in (database / filename) in
   let rs = Conan.Parse.parse_in_channel ic in
   close_in ic;
@@ -89,6 +96,11 @@ let simulate database output filename =
             (succ line, Conan.Tree.append ~filename ~line tree v))
           (1, Conan.Tree.empty) lines
       in
+      let tree =
+        if only_mime then
+          Conan.Process.only_mime_paths (Conan.Process.database ~tree)
+        else tree
+      in
       if Conan.Tree.weight tree >= 2000 then
         let[@warning "-8"] (Conan.Tree.Node lst) = tree in
         (output / Format.asprintf "%s.ml" (ocamlify filename))
@@ -99,12 +111,12 @@ let simulate database output filename =
       else [ output / (ocamlify filename ^ ".ml") ]
   | Error _err -> [ output / (ocamlify filename ^ ".ml") ]
 
-let run database output =
+let run only_mime database output =
   let files = Sys.readdir database in
   let files = Array.to_list files in
-  List.iter (serialize database output) files;
+  List.iter (serialize only_mime database output) files;
   let files = List.map ocamlify files in
-  let oc = open_out (output / "conan_database.ml") in
+  let oc = open_out (output / !name) in
   let ppf = Format.formatter_of_out_channel oc in
   List.iter
     (fun filename ->
@@ -117,12 +129,12 @@ let run database output =
     files;
   close_out oc
 
-let dry_run database output =
+let dry_run only_mime database output =
   let files = Sys.readdir database in
   let files = Array.to_list files in
-  let files = List.map (simulate database output) files in
+  let files = List.map (simulate only_mime database output) files in
   let files = List.concat files in
-  List.iter (Format.printf "%s\n%!") ((output / "conan_database.ml") :: files)
+  List.iter (Format.printf "%s\n%!") ((output / !name) :: files)
 
 let database = ref None
 
@@ -130,22 +142,35 @@ let output = ref None
 
 let dry_run_flag = ref false
 
+let only_mime_flag = ref false
+
 let anonymous_argument v =
   match !database with None -> database := Some v | Some _ -> ()
 
 let usage =
-  Format.asprintf "%s [--dry-run] <database> [-o <output>]\n%!" Sys.argv.(0)
+  Format.asprintf
+    "%s [--only-mime] [--dry-run] [--name <name>] <database> [-o <output>]\n%!"
+    Sys.argv.(0)
 
 let spec =
   [
     ( "-o",
       Arg.String (fun str -> output := Some str),
-      "The directory destination where the conan_database.ml will be made. By \
-       default, we emit the OCaml code into the given database directory." );
+      "The directory destination where the conan_database.ml/<name> will be \
+       made. By default, we emit the OCaml code into the given database \
+       directory." );
+    ( "--only-mime",
+      Arg.Set only_mime_flag,
+      "Serialize only a tree which informs about the MIME type (a lite version \
+       of the database)." );
     ( "--dry-run",
       Arg.Set dry_run_flag,
       "Show the list of produced OCaml files according to the given database \
        directory." );
+    ( "--name",
+      Arg.Set_string name,
+      "Generate a <name> OCaml file instead of (by default), the \
+       conan_database.ml which contains the whole database." );
   ]
 
 let exit_success = 0
@@ -162,11 +187,11 @@ let () =
       let output =
         match !output with Some output -> output | None -> database
       in
-      dry_run database output;
+      dry_run !only_mime_flag database output;
       exit exit_success
   | Some database ->
       let output =
         match !output with Some output -> output | None -> database
       in
-      run database output;
+      run !only_mime_flag database output;
       exit exit_success

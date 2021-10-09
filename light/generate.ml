@@ -20,7 +20,9 @@ let pp_list ~sep:pp_sep pp ppf lst =
 let run database output =
   let modules =
     Unix.open_process_in
-      (Format.asprintf "conan.serialize --dry-run %s -o %s" database output)
+      (Format.asprintf
+         "conan.serialize --only-mime --dry-run --name conan_light.ml %s -o %s"
+         database output)
   in
   let modules =
     let rec go acc =
@@ -38,11 +40,11 @@ let run database output =
  (targets @[<hov>%a@])
  (deps %%{bin:conan.serialize} (source_tree %s))
  (action
-  (run conan.serialize %s -o %s)))
+  (run conan.serialize --only-mime --name conan_light.ml %s -o %s)))
 
 (library
- (name conan_database)
- (public_name conan.standalone)
+ (name conan_light)
+ (public_name conan.light)
  (modules @[<hov>%a@])
  (libraries conan))
 %!|dune}

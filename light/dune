@@ -1,0 +1,15 @@
+(include dune.inc)
+
+(rule
+ (alias runtest)
+ (action
+  (diff dune.inc dune.inc.gen)))
+
+(rule
+ (target dune.inc.gen)
+ (deps
+  (:gen generate.ml)
+  %{bin:conan.serialize}
+  (source_tree ../database))
+ (action
+  (run %{ocaml} %{gen} ../database -o .)))

@@ -170,6 +170,54 @@ let append ~tree (db, tree') : database =
 let descending_walk scheduler syscall fd (db, tree) =
   descending_walk scheduler syscall db fd 0L Metadata.empty tree
 
+let has_mime_tag (db, tree) =
+  let visited = Hashtbl.create 0x10 in
+  let rec iter has_mime_tag = function
+    | [] -> ()
+    | (Tree.Name _, tree) :: rest ->
+        go has_mime_tag tree;
+        if not !has_mime_tag then iter has_mime_tag rest
+    | (Tree.Use { name; _ }, tree) :: rest ->
+        (if not (Hashtbl.mem visited name) then
+         match Hashtbl.find_opt db name with
+         | Some tree' ->
+             Hashtbl.add visited name ();
+             go has_mime_tag tree'
+         | None -> ());
+        if not !has_mime_tag then go has_mime_tag tree;
+        if not !has_mime_tag then iter has_mime_tag rest
+    | (Tree.MIME _, _) :: _rest -> has_mime_tag := true
+    | (Tree.Rule _, tree) :: rest ->
+        go has_mime_tag tree;
+        if not !has_mime_tag then iter has_mime_tag rest
+  and go has_mime_tag = function
+    | Tree.Done -> ()
+    | Tree.Node lst ->
+        let lst =
+          List.rev_map (fun (elt, sub) -> (Tree.operation elt, sub)) lst
+        in
+        (iter [@tailcall]) has_mime_tag lst
+  in
+  let has_mime_tag = ref false in
+  go has_mime_tag tree;
+  !has_mime_tag
+
+let only_mime_paths (db, tree) =
+  let rec go = function
+    | Tree.Done -> Tree.Unsafe.leaf
+    | Tree.Node lst ->
+        let lst =
+          List.rev_map (fun (elt, sub) -> (Tree.operation elt, sub)) lst
+        in
+        let f acc (operation, sub) =
+          if has_mime_tag (db, sub) then
+            (Tree.Unsafe.elt operation, go sub) :: acc
+          else acc
+        in
+        Tree.Unsafe.node (List.fold_left f [] lst)
+  in
+  go tree
+
 let rec ascending_walk ({ bind; return } as scheduler) syscall db fd results
     queue =
   let ( >>= ) = bind in
