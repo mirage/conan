@@ -3,7 +3,7 @@ open Conan_unix
 let ( >>= ) x f = match x with Ok x -> f x | Error err -> Error err
 
 let database =
-  match Sys.getenv "CONAN" with v -> v | exception _ -> "examples"
+  match Sys.getenv "CONAN" with v -> v | exception _ -> "database"
 
 let run ?(fmt = `Usual) filename =
   run ~database filename >>= fun result ->

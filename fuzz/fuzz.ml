@@ -1,9 +1,9 @@
 let ( / ) = Filename.concat
 
 let conan_database =
-  match Sys.getenv "CONAN_DATABASE" with
+  match Sys.getenv "CONAN" with
   | path -> path
-  | exception Not_found -> "./examples/"
+  | exception Not_found -> "database"
 
 let database =
   let rec go tree = function

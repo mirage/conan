@@ -3,7 +3,7 @@ let () = Printexc.record_backtrace true
 let test_parser filename =
   Alcotest.test_case filename `Quick @@ fun () ->
   let open Conan in
-  let ic = open_in ("../examples/" ^ filename) in
+  let ic = open_in ("../database/" ^ filename) in
   match Parse.parse_in_channel ic with
   | Ok _ -> Alcotest.(check pass) "parser" () ()
   | Error err -> Alcotest.failf "%a" Parse.pp_error err
@@ -11,7 +11,7 @@ let test_parser filename =
 let test_tree filename =
   Alcotest.test_case filename `Quick @@ fun () ->
   let open Conan in
-  let ic = open_in ("../examples/" ^ filename) in
+  let ic = open_in ("../database/" ^ filename) in
   match Parse.parse_in_channel ic with
   | Ok lst ->
       let _tree =

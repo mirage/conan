@@ -7,10 +7,10 @@
  (alias runtest)
  (deps
   fuzz.exe
-  (source_tree ../examples)
-  (env_var CONAN_DATABASE))
+  (source_tree ../database)
+  (env_var CONAN))
  (action
   (setenv
-   CONAN_DATABASE
-   ../examples
+   CONAN
+   ../database
    (run %{exe:fuzz.exe}))))

@@ -22,12 +22,12 @@ let ocamlify s =
   | s' -> s'
   | exception Not_found -> ocamlify s
 
-let serialize_into_multiple_files directory filename tree =
+let serialize_into_multiple_files output filename tree =
   let rec go (idx, acc) = function
     | [] -> List.rev acc
     | (elt, tree) :: r ->
         let filename' = Format.asprintf "%s_%03d.ml" (ocamlify filename) idx in
-        let oc = open_out (directory / filename') in
+        let oc = open_out (output / filename') in
         let ppf = Format.formatter_of_out_channel oc in
         Format.fprintf ppf "let tree = @[<2>%a@]\n%!" Conan.Tree.serialize tree;
         close_out oc;
@@ -36,7 +36,7 @@ let serialize_into_multiple_files directory filename tree =
   let[@warning "-8"] (Conan.Tree.Node lst) = tree in
   let elts = go (0, []) lst in
   let filename' = Format.asprintf "%s.ml" (ocamlify filename) in
-  let oc = open_out (directory / filename') in
+  let oc = open_out (output / filename') in
   let ppf = Format.formatter_of_out_channel oc in
   List.iteri
     (fun idx elt ->
@@ -50,8 +50,8 @@ let serialize_into_multiple_files directory filename tree =
     (List.init (List.length elts) identity);
   close_out oc
 
-let serialize directory filename =
-  let ic = open_in (directory / filename) in
+let serialize database output filename =
+  let ic = open_in (database / filename) in
   let rs = Conan.Parse.parse_in_channel ic in
   close_in ic;
   match rs with
@@ -63,26 +63,48 @@ let serialize directory filename =
           (1, Conan.Tree.empty) lines
       in
       if Conan.Tree.weight tree >= 2000 then
-        serialize_into_multiple_files directory filename tree
+        serialize_into_multiple_files output filename tree
       else
         let filename' = ocamlify filename ^ ".ml" in
-        let oc = open_out (directory / filename') in
+        let oc = open_out (output / filename') in
         let ppf = Format.formatter_of_out_channel oc in
         Format.fprintf ppf "let tree = @[<2>%a@]\n%!" Conan.Tree.serialize tree;
         close_out oc
   | Error _err ->
       let filename' = ocamlify filename ^ ".ml" in
-      let oc = open_out (directory / filename') in
+      let oc = open_out (output / filename') in
       let ppf = Format.formatter_of_out_channel oc in
       Format.fprintf ppf "let tree = Conan.Tree.empty\n%!";
       close_out oc
 
-let run directory =
-  let files = Sys.readdir directory in
+let simulate database output filename =
+  let ic = open_in (database / filename) in
+  let rs = Conan.Parse.parse_in_channel ic in
+  close_in ic;
+  match rs with
+  | Ok lines ->
+      let _, tree =
+        List.fold_left
+          (fun (line, tree) v ->
+            (succ line, Conan.Tree.append ~filename ~line tree v))
+          (1, Conan.Tree.empty) lines
+      in
+      if Conan.Tree.weight tree >= 2000 then
+        let[@warning "-8"] (Conan.Tree.Node lst) = tree in
+        (output / Format.asprintf "%s.ml" (ocamlify filename))
+        :: List.mapi
+             (fun idx _ ->
+               output / Format.asprintf "%s_%03d.ml" (ocamlify filename) idx)
+             lst
+      else [ output / (ocamlify filename ^ ".ml") ]
+  | Error _err -> [ output / (ocamlify filename ^ ".ml") ]
+
+let run database output =
+  let files = Sys.readdir database in
   let files = Array.to_list files in
-  List.iter (serialize directory) files;
+  List.iter (serialize database output) files;
   let files = List.map ocamlify files in
-  let oc = open_out (directory / "conan_database.ml") in
+  let oc = open_out (output / "conan_database.ml") in
   let ppf = Format.formatter_of_out_channel oc in
   List.iter
     (fun filename ->
@@ -95,23 +117,56 @@ let run directory =
     files;
   close_out oc
 
-let directory = ref None
+let dry_run database output =
+  let files = Sys.readdir database in
+  let files = Array.to_list files in
+  let files = List.map (simulate database output) files in
+  let files = List.concat files in
+  List.iter (Format.printf "%s\n%!") ((output / "conan_database.ml") :: files)
+
+let database = ref None
+
+let output = ref None
+
+let dry_run_flag = ref false
 
 let anonymous_argument v =
-  match !directory with None -> directory := Some v | Some _ -> ()
+  match !database with None -> database := Some v | Some _ -> ()
 
-let usage = Format.asprintf "%s database\n%!" Sys.argv.(0)
+let usage =
+  Format.asprintf "%s [--dry-run] <database> [-o <output>]\n%!" Sys.argv.(0)
+
+let spec =
+  [
+    ( "-o",
+      Arg.String (fun str -> output := Some str),
+      "The directory destination where the conan_database.ml will be made. By \
+       default, we emit the OCaml code into the given database directory." );
+    ( "--dry-run",
+      Arg.Set dry_run_flag,
+      "Show the list of produced OCaml files according to the given database \
+       directory." );
+  ]
 
 let exit_success = 0
 
 let exit_failure = 1
 
 let () =
-  Arg.parse [] anonymous_argument usage;
-  match !directory with
+  Arg.parse spec anonymous_argument usage;
+  match !database with
   | None ->
       Format.eprintf "%s" usage;
       exit exit_failure
-  | Some directory ->
-      run directory;
+  | Some database when !dry_run_flag ->
+      let output =
+        match !output with Some output -> output | None -> database
+      in
+      dry_run database output;
+      exit exit_success
+  | Some database ->
+      let output =
+        match !output with Some output -> output | None -> database
+      in
+      run database output;
       exit exit_success

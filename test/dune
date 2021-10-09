@@ -12,12 +12,12 @@
  (alias runtest)
  (deps
   (:test test_parser.exe)
-  (source_tree ../examples))
+  (source_tree ../database))
  (action
   (run %{test} --color=always)))
 
 (cram
  (deps
-  (source_tree ../examples)
+  (source_tree ../database)
   %{bin:conan.file}
   (package conan)))
