@@ -8,4 +8,4 @@
   $ cat >dune-project <<EOF
   > (lang dune 2.0)
   > EOF
-  $ dune build ./conan_database.exe
+  $ dune build ./conan_database.exe 2> /dev/null
