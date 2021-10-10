@@ -1,8 +1,7 @@
 open Mirage
 
 let main = foreign
-  ~packages:[ package "conan.light"
-            ; package "conan.string" ]
+  ~packages:[ package "conan" ~sublibs:[ "light"; "string" ] ]
   "Unikernel.Make" (console @-> job)
 
 let () =
