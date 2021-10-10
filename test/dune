@@ -25,6 +25,7 @@
  (enabled_if %{arch_sixtyfour})
  (deps
   (source_tree ../database)
+  (source_tree ../unikernel)
   %{bin:conan.file}
   (package conan)))
 

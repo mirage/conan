@@ -25,6 +25,15 @@ depends: [
   "uutf"
   "crowbar" {>= "0.2" & with-test}
   "rresult" {with-test}
+  "mirage"              {with-test}
+  "mirage-unix"         {with-test}
+  "mirage-bootvar-unix" {with-test}
+  "mirage-console-unix" {with-test}
+  "mirage-clock-unix"   {with-test}
+  "mirage-logs"         {with-test}
+  "mirage-types"        {with-test}
+  "mirage-types-lwt"    {with-test}
+  "mirage-runtime"      {qith-test}
 ]
 build: [
   ["dune" "subst"] {pinned}
