@@ -373,7 +373,7 @@ let newline = "\n" (* TODO: windows *)
 
 let ok x = Ok x
 
-let error err = Error err
+let of_option ~error = function Some x -> Ok x | None -> Error (error ())
 
 let reword_error f = function Ok x -> Ok x | Error err -> Error (f err)
 
@@ -547,15 +547,17 @@ let process :
         | `NE -> Size.long
         | `ME -> assert false
       in
+      let error () = `Invalid_date in
       syscall.seek fd abs_offset SET >|= reword_error (fun err -> `Syscall err)
       >?= fun () ->
       Size.read scheduler syscall fd size
-      >?= (return <.> ok <.> Ptime.Span.of_int_s <.> Int64.to_int)
       >|= reword_error (fun err -> `Syscall err)
+      >?= (return <.> of_option ~error <.> Ptime.Span.of_float_s
+         <.> Int64.to_float)
       >?= fun v ->
       match Ptime.of_span (Arithmetic.process_ptime v c) with
       | Some v -> return (ok (Ptime.to_rfc3339 v))
-      | None -> return (error `Invalid_date))
+      | None -> return (Error `Invalid_date))
   | Date (_, `s64, c, endian) -> (
       let size =
         match endian with
@@ -564,15 +566,17 @@ let process :
         | `NE -> Size.quad
         | `ME -> assert false
       in
+      let error () = `Invalid_date in
       syscall.seek fd abs_offset SET >|= reword_error (fun err -> `Syscall err)
       >?= fun () ->
       Size.read scheduler syscall fd size
-      >?= (return <.> ok <.> Ptime.Span.of_int_s <.> Int64.to_int)
       >|= reword_error (fun err -> `Syscall err)
+      >?= (return <.> of_option ~error <.> Ptime.Span.of_float_s
+         <.> Int64.to_float)
       >?= fun v ->
       match Ptime.of_span (Arithmetic.process_ptime v c) with
       | Some v -> return (ok (Ptime.to_rfc3339 v))
-      | None -> return (error `Invalid_date))
+      | None -> return (Error `Invalid_date))
   | Unicode_string _ -> return (Ok "")
   | Pascal_string -> assert false
   | Indirect _ -> assert false
