@@ -32,6 +32,4 @@ build: [
   ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
 dev-repo: "git+https://github.com/dinosaure/conan.git"
-conflicts: [
-  "ocaml-option-flambda"
-]
+available: [ "%{ocaml-option-afl:enable}" != "enable" ]
