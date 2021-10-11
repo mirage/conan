@@ -28,23 +28,18 @@ let test01 =
 |file}
     "foo" None
 
-(* XXX(dinosaure): even if this magic file is correct, it results on an
- * infinite loop with `file` where the semantic with [use] and relative offset
- * is not so clear on its side.
- *
- * [conan] did the choice to apply the relative offset as the new absolute
- * offset when we compute the associated tree. By this way, we only go further
- * along the file instead of to be stick on the absolute offset [0] as [file]
- * seems to do. *)
 let odd_even =
   {file|
-0        name    foo
->&0      byte    x      odd
->>&1     byte    x      even
->>>&1    use     foo
+0	name		even
+>0	byte		x	even
+>>1	use		odd
 
-0        byte    x
->&0      use     foo
+0	name		odd
+>0	byte		x	odd
+>>1	use		even
+
+0	byte		x
+>0	use 		odd
 |file}
 
 let test02 =
