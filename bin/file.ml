@@ -3,10 +3,16 @@ open Conan_unix
 let ( >>= ) x f = match x with Ok x -> f x | Error err -> Error err
 
 let database =
-  match Sys.getenv "CONAN" with v -> v | exception _ -> "database"
+  match Sys.getenv "CONAN" with
+  | v -> String.split_on_char ',' v
+  | exception _ -> Database.Sites.database
+
+let tree =
+  List.fold_left Conan.Tree.merge Conan.Tree.empty
+    (List.rev_map (fun directory -> Conan_unix.tree ~directory) database)
 
 let run ?(fmt = `Usual) filename =
-  run ~database filename >>= fun result ->
+  run_with_tree tree filename >>= fun result ->
   match fmt with
   | `Usual -> (
       match Conan.Metadata.output result with

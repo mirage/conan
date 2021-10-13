@@ -17,6 +17,7 @@ depends: [
   "stdlib-shims"
   "alcotest" {with-test}
   "dune" {>= "2.9.0"}
+  "dune-site" {>= "2.9.1"}
   "fmt" {>= "0.8.9"}
   "logs" {>= "0.7.0"}
   "mtime" {>= "1.2.0"}
@@ -25,22 +26,21 @@ depends: [
   "uutf"
   "crowbar" {>= "0.2" & with-test}
   "rresult" {with-test}
-  "mirage"              {with-test}
-  "mirage-unix"         {with-test}
+  "mirage" {with-test}
+  "mirage-unix" {with-test}
   "mirage-bootvar-unix" {with-test}
   "mirage-console-unix" {with-test}
-  "mirage-clock-unix"   {with-test}
-  "mirage-logs"         {with-test}
-  "mirage-types"        {with-test}
-  "mirage-types-lwt"    {with-test}
-  "mirage-runtime"      {qith-test}
+  "mirage-clock-unix" {with-test}
+  "mirage-logs" {with-test}
+  "mirage-types" {with-test}
+  "mirage-types-lwt" {with-test}
+  "mirage-runtime" {qith-test}
 ]
+conflicts: ["ocaml-option-flambda"]
 build: [
-  ["dune" "subst"] {pinned}
+  ["dune" "subst"] {dev}
   ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "install" "--create-install-files" name]
   ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
 dev-repo: "git+https://github.com/dinosaure/conan.git"
-conflicts: [
-  "ocaml-option-flambda"
-]

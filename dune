@@ -1,6 +1,9 @@
 (dirs :standard database)
 
 (install
+ (section
+  (site
+   (conan database)))
  (files
   database/acorn
   database/adi
@@ -314,5 +317,4 @@
   database/zilog
   database/zip
   database/zyxel)
- (section share)
  (package conan))
