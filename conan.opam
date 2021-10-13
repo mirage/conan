@@ -24,6 +24,7 @@ depends: [
   "bigstringaf"
   "lwt"
   "uutf"
+  "ptime"
   "crowbar" {>= "0.2" & with-test}
   "rresult" {with-test}
   "mirage" {with-test}
