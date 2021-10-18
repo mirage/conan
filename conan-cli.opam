@@ -11,24 +11,16 @@ homepage: "https://github.com/dinosaure/conan"
 doc: "https://dinosaure.github.io/conan/"
 bug-reports: "https://github.com/dinosaure/conan/issues"
 depends: [
-  "ocaml"               {>= "4.08.0"}
-  "re"                  {>= "1.9.0"}
-  "dune"                {>= "2.9.0"}
-  "uutf"
-  "ptime"
-  "alcotest"            {with-test}
-  "crowbar"             {>= "0.2" & with-test}
-  "fmt"                 {with-test}
-  "rresult"             {with-test}
-  "mirage"              {with-test}
-  "mirage-unix"         {with-test}
-  "mirage-bootvar-unix" {with-test}
-  "mirage-console-unix" {with-test}
-  "mirage-clock-unix"   {with-test}
-  "mirage-logs"         {with-test}
-  "mirage-types"        {with-test}
-  "mirage-types-lwt"    {with-test}
-  "mirage-runtime"      {with-test}
+  "ocaml"          {>= "4.08.0"}
+  "conan"          {= version}
+  "conan-database" {= version}
+  "conan-unix"     {= version}
+  "dune"           {>= "2.9.0"}
+  "dune-site"
+  "alcotest"       {with-test}
+  "crowbar"        {with-test}
+  "fmt"            {with-test}
+  "rresult"        {with-test}
 ]
 conflicts: ["ocaml-option-flambda"]
 build: [

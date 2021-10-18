@@ -42,7 +42,7 @@ let run database output =
 
 (library
  (name conan_database)
- (public_name conan.standalone)
+ (public_name conan-database)
  (modules @[<hov>%a@])
  (libraries conan))
 %!|dune}

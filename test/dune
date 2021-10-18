@@ -6,7 +6,7 @@
 (executable
  (name test_light)
  (modules test_light)
- (libraries conan conan.string conan.light rresult alcotest))
+ (libraries conan conan.string conan-database.light rresult alcotest))
 
 (executable
  (name test_parser)
@@ -23,11 +23,12 @@
 
 (cram
  (enabled_if %{arch_sixtyfour})
+ (package conan-cli)
  (deps
+  (package conan-database)
   (source_tree ../database)
   (source_tree ../unikernel)
-  %{bin:conan.file}
-  (package conan)))
+  %{bin:conan.file}))
 
 (rule
  (alias runtest)
@@ -38,6 +39,7 @@
 
 (rule
  (alias runtest)
+ (package conan-database)
  (deps
   (:test test_light.exe))
  (action

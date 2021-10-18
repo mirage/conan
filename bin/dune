@@ -2,14 +2,16 @@
  (name file)
  (modules file database)
  (public_name conan.file)
- (libraries dune-site conan_unix))
+ (package conan-cli)
+ (libraries dune-site conan-unix))
 
 (executable
  (name serialize)
  (modules serialize)
  (public_name conan.serialize)
- (libraries conan_unix))
+ (package conan-database)
+ (libraries conan))
 
 (generate_sites_module
  (module database)
- (sites conan))
+ (sites conan-cli))

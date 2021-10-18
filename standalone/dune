@@ -2,11 +2,13 @@
 
 (rule
  (alias runtest)
+ (package conan-database)
  (action
   (diff dune.inc dune.inc.gen)))
 
 (rule
  (target dune.inc.gen)
+ (package conan-database)
  (deps
   (:gen generate.ml)
   %{bin:conan.serialize}
