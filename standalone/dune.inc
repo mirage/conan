@@ -186,7 +186,7 @@
 
 (library
  (name conan_database)
- (public_name conan.standalone)
+ (public_name conan-database)
  (modules 
 acorn adi adventure algol68 allegro alliant alpha amanda amigaos android
 animation aout apache apl apple application applix apt archive asf assembler

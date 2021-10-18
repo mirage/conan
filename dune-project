@@ -3,6 +3,12 @@
 (name conan)
 (cram enable)
 
+(package (name conan))
+(package (name conan-database))
+(package (name conan-unix))
+(package (name conan-lwt))
+
 (package
- (name conan)
+ (name conan-cli)
  (sites (share database)))
+

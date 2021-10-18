@@ -44,7 +44,8 @@ let run database output =
 
 (library
  (name conan_light)
- (public_name conan.light)
+ (public_name conan-database.light)
+ (wrapped false)
  (modules @[<hov>%a@])
  (libraries conan))
 %!|dune}

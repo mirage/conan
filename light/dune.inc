@@ -70,7 +70,8 @@
 
 (library
  (name conan_light)
- (public_name conan.light)
+ (public_name conan-database.light)
+ (wrapped false)
  (modules 
 acorn adi adventure algol68 allegro alliant alpha amanda amigaos android
 animation aout apache apl apple application applix apt archive asf assembler

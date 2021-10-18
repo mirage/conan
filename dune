@@ -3,7 +3,7 @@
 (install
  (section
   (site
-   (conan database)))
+   (conan-cli database)))
  (files
   database/acorn
   database/adi
@@ -317,4 +317,4 @@
   database/zilog
   database/zip
   database/zyxel)
- (package conan))
+ (package conan-cli))

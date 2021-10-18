@@ -1,4 +1,4 @@
 (library
  (name conan_unix)
- (public_name conan.unix)
+ (public_name conan-unix)
  (libraries conan unix))

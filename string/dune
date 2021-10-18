@@ -1,4 +1,4 @@
 (library
  (name conan_string)
  (public_name conan.string)
- (libraries fmt conan))
+ (libraries conan))
