@@ -1,54 +1,11 @@
 
 #------------------------------------------------------------------------------
-# $File: pgp,v 1.18 2019/12/21 16:33:28 christos Exp $
+# $File: pgp,v 1.25 2021/04/26 15:56:00 christos Exp $
 # pgp:  file(1) magic for Pretty Good Privacy
+
+# Handling of binary PGP keys is in pgp-binary-keys.
 # see https://lists.gnupg.org/pipermail/gnupg-devel/1999-September/016052.html
 #
-# Update: Joerg Jenderek
-# Note: verified by `gpg -v --debug 0x02 --list-packets < PUBRING263_10.PGP`
-#0		byte	0x99		MAYBE PGP 0x99
-0		byte	0x99
-# 99h~10;0110;01~2=old packet type;tag 6=Public-Key Packet;1=two-octet length
-# A two-octet body header encodes packet lengths of 192~00C0h - 8383~20BFh
-#>1		ubeshort	x		\b, body length 0x%.4x
-# skip Basic.Image Beauty.320 Pic.Icons by looking for low version number
-#>3		ubyte		x		\b, V=%u
-#>3		ubyte		<5		VERSION OK
->3		ubyte		<5
-# next packet type often b4h~(tag 13)~User ID Packet, b0h~(tag 12)~Trust packet
-#>>(1.S+3)	ubyte	x		\b, next packet type 0x%x
-# skip 9900-v4.bin 9902-v4.bin by looking for valid second packet type (bit 7=1)
-#>>(1.S+3)	ubyte	>0x7F		TYPE OK,
->>(1.S+3)	ubyte	>0x7F
-# old versions 2,3 implies Pretty Good Privacy
->>>3		ubyte		<4		PGP key public ring (v%u)
-!:mime		application/pgp-keys
-!:ext		pgp/ASD
->>>>4		beldate		x		created %s
-# days that this key is valid. If this number is zero, then it does not expire
->>>>8		ubeshort	>0		\b, %u days valid
->>>>8		ubeshort	=0		\b, not expire
-# display key algorithm 1~RSA (Encrypt or Sign)
->>>>10		use		key_algo
-# Multiprecision Integers (MPI) size
->>>>11		ubeshort	x		%u bits
-# MPI
->>>>13		ubequad		x		MPI=0x%16.16llx...
-# new version implies Pretty Good Privacy (PGP) >= 5.0 or Gnu Privacy Guard (GPG)
->>>3		ubyte		>3		PGP/GPG key public ring (v%u)
-!:mime		application/pgp-keys
-!:ext		pgp/gpg/pkr/asd
->>>>4		beldate		x		created %s
-# display key algorithm 17~DSA
->>>>8		use		key_algo
-# Multiprecision Integers (MPI) size
->>>>9		ubeshort	x		%u bits
->>>>11		ubequad		x		MPI=0x%16.16llx...
-
-0       beshort         0x9501                  PGP key security ring
-!:mime	application/x-pgp-keyring
-0       beshort         0x9500                  PGP key security ring
-!:mime	application/x-pgp-keyring
 0	beshort		0xa600			PGP encrypted data
 #!:mime	application/pgp-encrypted
 #0	string		-----BEGIN\040PGP	text/PGP armored data
@@ -147,8 +104,8 @@
 # 1024b RSA encrypted data
 
 0	string	\x84\x8c\x03		PGP RSA encrypted session key -
->3	lelong	x			keyid: %X
->7	lelong	x			%X
+>3	belong	x			keyid: %08X
+>7	belong	x			%08X
 >11	byte	0x01			RSA (Encrypt or Sign) 1024b
 >11	byte	0x02			RSA Encrypt-Only 1024b
 >12	string	\x04\x00
@@ -164,8 +121,8 @@
 # 2048b RSA encrypted data
 
 0	string	\x85\x01\x0c\x03	PGP RSA encrypted session key -
->4	lelong	x			keyid: %X
->8	lelong	x			%X
+>4	belong	x			keyid: %08X
+>8	belong	x			%08X
 >12	byte	0x01			RSA (Encrypt or Sign) 2048b
 >12	byte	0x02			RSA Encrypt-Only 2048b
 >13	string	\x08\x00
@@ -181,8 +138,8 @@
 # 3072b RSA encrypted data
 
 0	string	\x85\x01\x8c\x03	PGP RSA encrypted session key -
->4	lelong	x			keyid: %X
->8	lelong	x			%X
+>4	belong	x			keyid: %08X
+>8	belong	x			%08X
 >12	byte	0x01			RSA (Encrypt or Sign) 3072b
 >12	byte	0x02			RSA Encrypt-Only 3072b
 >13	string	\x0c\x00
@@ -195,11 +152,11 @@
 >13	string	\x0b\xf9
 >399	byte	0xd2			.
 
-# 3072b RSA encrypted data
+# 4096b RSA encrypted data
 
 0	string	\x85\x02\x0c\x03	PGP RSA encrypted session key -
->4	lelong	x			keyid: %X
->8	lelong	x			%X
+>4	belong	x			keyid: %08X
+>8	belong	x			%08X
 >12	byte	0x01			RSA (Encrypt or Sign) 4096b
 >12	byte	0x02			RSA Encrypt-Only 4096b
 >13	string	\x10\x00
@@ -212,13 +169,13 @@
 >13	string	\x0f\xf9
 >527	byte	0xd2			.
 
-# 4096b RSA encrypted data
+# 8192b RSA encrypted data
 
 0	string	\x85\x04\x0c\x03	PGP RSA encrypted session key -
->4	lelong	x			keyid: %X
->8	lelong	x			%X
->12	byte	0x01			RSA (Encrypt or Sign) 8129b
->12	byte	0x02			RSA Encrypt-Only 8129b
+>4	belong	x			keyid: %08X
+>8	belong	x			%08X
+>12	byte	0x01			RSA (Encrypt or Sign) 8192b
+>12	byte	0x02			RSA Encrypt-Only 8192b
 >13	string	\x20\x00
 >13	string	\x1f\xff
 >13	string	\x1f\xfe
@@ -228,6 +185,51 @@
 >13	string	\x1f\xfa
 >13	string	\x1f\xf9
 >1039	byte	0xd2			.
+
+# 1024b Elgamal encrypted data
+
+0	string	\x85\x01\x0e\x03	PGP Elgamal encrypted session key -
+>4	belong	x			keyid: %08X
+>8	belong	x			%08X
+>12	byte	0x10			Elgamal Encrypt-Only 1024b.
+>13	string	\x04\x00
+>13	string	\x03\xff
+>13	string	\x03\xfe
+>13	string	\x03\xfd
+>13	string	\x03\xfc
+>13	string	\x03\xfb
+>13	string	\x03\xfa
+>13	string	\x03\xf9
+
+# 2048b Elgamal encrypted data
+
+0	string	\x85\x02\x0e\x03	PGP Elgamal encrypted session key -
+>4	belong	x			keyid: %08X
+>8	belong	x			%08X
+>12	byte	0x10			Elgamal Encrypt-Only 2048b.
+>13	string	\x08\x00
+>13	string	\x07\xff
+>13	string	\x07\xfe
+>13	string	\x07\xfd
+>13	string	\x07\xfc
+>13	string	\x07\xfb
+>13	string	\x07\xfa
+>13	string	\x07\xf9
+
+# 3072b Elgamal encrypted data
+
+0	string	\x85\x03\x0e\x03	PGP Elgamal encrypted session key -
+>4	belong	x			keyid: %08X
+>8	belong	x			%08X
+>12	byte	0x10			Elgamal Encrypt-Only 3072b.
+>13	string	\x0c\x00
+>13	string	\x0b\xff
+>13	string	\x0b\xfe
+>13	string	\x0b\xfd
+>13	string	\x0b\xfc
+>13	string	\x0b\xfb
+>13	string	\x0b\xfa
+>13	string	\x0b\xf9
 
 # crypto algo mapper
 
@@ -359,7 +361,7 @@
 # we branch into the proper key size
 # signatures defined as x{keysize}
 
->0	name	pgpkey
+0	name	pgpkey
 >0	string	\x01\xd8	1024b
 >>2	use	x1024
 >0	string	\x01\xeb	1024b
@@ -537,8 +539,6 @@
 
 # PGP RSA (e=65537) secret (sub-)key header
 
-0	byte	0x95			PGP Secret Key -
->1	use	pgpkey
 0	byte	0x97			PGP Secret Sub-key -
 >1	use	pgpkey
 0	byte	0x9d
@@ -546,9 +546,9 @@
 # secret subkey packet (tag 7) with same structure as secret key packet (tag 5)
 # skip Fetus.Sys16 CALIBUS.MAIN OrbFix.Sys16.Ex by looking for positive len
 >1	ubeshort	>0
-#>1	ubeshort	x		\b, body length 0x%x
+#>1	ubeshort	x		\b, body length %#x
 # next packet type often 88h,89h~(tag 2)~Signature Packet
-#>>(1.S+3)	ubyte	x		\b, next packet type 0x%x
+#>>(1.S+3)	ubyte	x		\b, next packet type %#x
 # skip Dragon.SHR DEMO.INIT by looking for positive version
 >>3	ubyte		>0
 # skip BUISSON.13 GUITAR1 by looking for low version number
@@ -564,7 +564,7 @@
 >>>>>11		ubeshort	x	%db
 >>>>>4		beldate		x	created on %s -
 # old versions use 2 additional bytes after time stamp
-#>>>>>8		ubeshort	x	0x%x
+#>>>>>8		ubeshort	x	%#x
 # display key algorithm 1~RSA Encrypt|Sign - 21~Diffie-Hellman
 >>>>>10	  	use		key_algo
 >>>>>(11.S/8)	ubequad		x

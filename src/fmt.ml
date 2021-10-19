@@ -113,11 +113,27 @@ type ('ty, 'v) precision =
   | Lit : int -> ('v, 'v) precision
   | Arg : (int -> 'v, 'v) precision
 
+type _ conv =
+  | Conv_c : char conv
+  | Conv_d : int conv
+  | Conv_x : int conv
+  | Conv_Cx : int conv
+  | Conv_X : int conv
+  | Conv_CX : int conv
+
 type ('ty, 'v) order =
-  | Byte : ('u, 'v) padding * ('v, char -> 'w) precision -> ('u, 'w) order
-  | Short : ('u, 'v) padding * ('v, int -> 'w) precision -> ('u, 'w) order
-  | Long : ('u, 'v) padding * ('v, int32 -> 'w) precision -> ('u, 'w) order
-  | Quad : ('u, 'v) padding * ('v, int64 -> 'w) precision -> ('u, 'w) order
+  | Byte :
+      char conv * ('u, 'v) padding * ('v, char -> 'w) precision
+      -> ('u, 'w) order
+  | Short :
+      int conv * ('u, 'v) padding * ('v, int -> 'w) precision
+      -> ('u, 'w) order
+  | Long :
+      int conv * ('u, 'v) padding * ('v, int32 -> 'w) precision
+      -> ('u, 'w) order
+  | Quad :
+      int conv * ('u, 'v) padding * ('v, int64 -> 'w) precision
+      -> ('u, 'w) order
   | Float : ('u, 'v) padding * ('v, float -> 'w) precision -> ('u, 'w) order
   | String : ('u, string -> 'v) padding -> ('u, 'v) order
   | Const : 'a t * 'a -> ('v, 'v) order
@@ -269,19 +285,19 @@ let rec ty_of_fmt : type v r. (v, r) fmt -> (v, r) ty = function
       let precision = ty_of_precision precision in
       padding @ precision @ Any (key, ty_of_fmt fmt)
   | Param :: fmt -> Param (ty_of_fmt fmt)
-  | Byte (padding, precision) :: fmt ->
+  | Byte (_, padding, precision) :: fmt ->
       let padding = ty_of_padding padding in
       let precision = ty_of_precision precision in
       padding @ precision @ Char (ty_of_fmt fmt)
-  | Short (padding, precision) :: fmt ->
+  | Short (_, padding, precision) :: fmt ->
       let padding = ty_of_padding padding in
       let precision = ty_of_precision precision in
       padding @ precision @ Int (ty_of_fmt fmt)
-  | Long (padding, precision) :: fmt ->
+  | Long (_, padding, precision) :: fmt ->
       let padding = ty_of_padding padding in
       let precision = ty_of_precision precision in
       padding @ precision @ Int32 (ty_of_fmt fmt)
-  | Quad (padding, precision) :: fmt ->
+  | Quad (_, padding, precision) :: fmt ->
       let padding = ty_of_padding padding in
       let precision = ty_of_precision precision in
       padding @ precision @ Int64 (ty_of_fmt fmt)
@@ -330,29 +346,29 @@ let rec gen : type ty0 v0 ty1 v1. (ty0, v0) fmt -> (ty1, v1) ty -> (ty1, v1) tw
   | Const (pp, v) :: fmt_rest, ty_rest ->
       let (T (fmt, ty)) = gen fmt_rest ty_rest in
       T (Const (pp, v) :: fmt, ty)
-  | Byte (padding, precision) :: fmt_rest, _ -> (
+  | Byte (conv, padding, precision) :: fmt_rest, _ -> (
       match gen_padding_precision padding precision ty with
       | V (padding, precision, Char ty_rest) ->
           let (T (fmt, ty)) = gen fmt_rest ty_rest in
-          T (Byte (padding, precision) :: fmt, ty)
+          T (Byte (conv, padding, precision) :: fmt, ty)
       | _ -> raise Invalid_type)
-  | Short (padding, precision) :: fmt_rest, _ -> (
+  | Short (conv, padding, precision) :: fmt_rest, _ -> (
       match gen_padding_precision padding precision ty with
       | V (padding, precision, Int ty_rest) ->
           let (T (fmt, ty)) = gen fmt_rest ty_rest in
-          T (Short (padding, precision) :: fmt, ty)
+          T (Short (conv, padding, precision) :: fmt, ty)
       | _ -> raise Invalid_type)
-  | Long (padding, precision) :: fmt_rest, _ -> (
+  | Long (conv, padding, precision) :: fmt_rest, _ -> (
       match gen_padding_precision padding precision ty with
       | V (padding, precision, Int32 ty_rest) ->
           let (T (fmt, ty)) = gen fmt_rest ty_rest in
-          T (Long (padding, precision) :: fmt, ty)
+          T (Long (conv, padding, precision) :: fmt, ty)
       | _ -> raise Invalid_type)
-  | Quad (padding, precision) :: fmt_rest, _ -> (
+  | Quad (conv, padding, precision) :: fmt_rest, _ -> (
       match gen_padding_precision padding precision ty with
       | V (padding, precision, Int64 ty_rest) ->
           let (T (fmt, ty)) = gen fmt_rest ty_rest in
-          T (Quad (padding, precision) :: fmt, ty)
+          T (Quad (conv, padding, precision) :: fmt, ty)
       | _ -> raise Invalid_type)
   | Float (padding, precision) :: fmt_rest, _ -> (
       match gen_padding_precision padding precision ty with
@@ -389,14 +405,14 @@ let rec concat : type u v w. (u, v) fmt -> (v, w) fmt -> (u, w) fmt =
 
 let ( ^^ ) = concat
 
-let pp_char ?padding ?precision ppf v =
+let pp_char ~conv:_ ?padding ?precision ppf v =
   match (padding, precision) with
   | Some (`Left padding), _ ->
       pf ppf (Scanf.format_from_string (strf "%%-%dc" padding) "%c") v
   | Some (`Zero _), _ -> pf ppf "%0c" v
   | _ -> pf ppf "%c" v
 
-let pp_int ?padding ?precision ppf v =
+let pp_int ~conv:_ ?padding ?precision ppf v =
   match (padding, precision) with
   | None, None -> pf ppf "%d" v
   | Some (`Left padding), None -> pf ppf "%-*d" padding v
@@ -406,7 +422,7 @@ let pp_int ?padding ?precision ppf v =
   | Some (`Left padding), Some precision -> pf ppf "%-*.*d" padding precision v
   | Some (`Right padding), Some precision -> pf ppf "%*.*d" padding precision v
 
-let pp_int32 ?padding ?precision ppf v =
+let pp_int32 ~conv:_ ?padding ?precision ppf v =
   match (padding, precision) with
   | None, None -> pf ppf "%ld" v
   | Some (`Left padding), None -> pf ppf "%-*ld" padding v
@@ -416,7 +432,7 @@ let pp_int32 ?padding ?precision ppf v =
   | Some (`Left padding), Some precision -> pf ppf "%-*.*ld" padding precision v
   | Some (`Right padding), Some precision -> pf ppf "%*.*ld" padding precision v
 
-let pp_int64 ?padding ?precision ppf v =
+let pp_int64 ~conv:_ ?padding ?precision ppf v =
   match (padding, precision) with
   | None, None -> pf ppf "%Ld" v
   | Some (`Left padding), None -> pf ppf "%-*Ld" padding v
@@ -446,13 +462,15 @@ type wpd = Pd : ('v, 'r) padding -> wpd
 
 type wpr = Pr : ('v, 'r) precision -> wpr
 
-let is_flag = function '-' | '0' -> true | _ -> false
+let is_flag = function '-' | '0' | '#' -> true | _ -> false
 
 let is_dash = function '-' -> true | _ -> false
 
 let is_zero = function '0' -> true | _ -> false
 
 let is_digit = function '0' .. '9' -> true | _ -> false
+
+let is_hash = function '#' -> true | _ -> false
 
 type s = Sub.t
 
@@ -494,16 +512,19 @@ let make_pdprebb :
   | Arg v -> PdPrEbb (Arg v, precision, fmt)
 
 let rec parse_precision :
-    type x v r. any:x Hmap.key -> (v, _) padding -> s -> r ebb =
- fun ~any padding s ->
+    type x v r. any:x Hmap.key -> bool -> (v, _) padding -> s -> r ebb =
+ fun ~any alteration_flag padding s ->
   let open Sub in
   let dot = v "." in
   if is_prefix ~affix:dot s then
     let precision, s = span ~sat:is_digit (tail s) in
     match to_string precision with
-    | "" -> parse_flag ~any padding Arg s
-    | precision -> parse_flag padding ~any (Lit (int_of_string precision)) s
-  else parse_flag ~any padding Nop s
+    | "" -> parse_flag ~any alteration_flag padding Arg s
+    | precision ->
+        parse_flag ~any alteration_flag padding
+          (Lit (int_of_string precision))
+          s
+  else parse_flag ~any alteration_flag padding Nop s
 
 and parse_padding : type x r. any:x Hmap.key -> s -> r ebb =
  fun ~any s ->
@@ -511,23 +532,26 @@ and parse_padding : type x r. any:x Hmap.key -> s -> r ebb =
   let flags, s = span ~sat:is_flag s in
   let left_padding = exists is_dash flags in
   let zero_padding = exists is_zero flags in
+  let alteration_flag = exists is_hash flags in
   let padding, s = span ~sat:is_digit s in
   match (left_padding, zero_padding, to_string padding) with
-  | false, false, "" -> parse_precision ~any Nop s
+  | false, false, "" -> parse_precision ~any alteration_flag Nop s
   | true, false, "" ->
-      parse_precision ~any (Lit (`Right, 0)) s
+      parse_precision ~any alteration_flag (Lit (`Right, 0)) s
       (* XXX(dinosaure): check "%-s" please! I don't know what it should do! *)
-  | false, true, "" -> parse_precision ~any (Arg `Zero) s
+  | false, true, "" -> parse_precision ~any alteration_flag (Arg `Zero) s
   | false, false, pad ->
-      parse_precision ~any (Lit (`Right, int_of_string pad)) s
-  | true, false, pad -> parse_precision ~any (Lit (`Left, int_of_string pad)) s
-  | false, true, pad -> parse_precision ~any (Lit (`Zero, int_of_string pad)) s
+      parse_precision ~any alteration_flag (Lit (`Right, int_of_string pad)) s
+  | true, false, pad ->
+      parse_precision ~any alteration_flag (Lit (`Left, int_of_string pad)) s
+  | false, true, pad ->
+      parse_precision ~any alteration_flag (Lit (`Zero, int_of_string pad)) s
   | true, true, _ -> invalid_arg "Invalid padding flags"
 
 and parse_flag :
     type x a b c d r.
-    any:x Hmap.key -> (a, b) padding -> (c, d) precision -> s -> r ebb =
- fun ~any padding precision s ->
+    any:x Hmap.key -> bool -> (a, b) padding -> (c, d) precision -> s -> r ebb =
+ fun ~any alteration_flag padding precision s ->
   let open Sub in
   match head s with
   | None -> invalid_arg "Invalid format: %S" (to_string s)
@@ -542,13 +566,31 @@ and parse_flag :
       let (PdPrEbb (padding, precision, fmt)) =
         make_pdprebb padding precision fmt
       in
-      Ebb (Byte (padding, precision) :: fmt)
+      Ebb (Byte (Conv_c, padding, precision) :: fmt)
   | Some 'd' ->
       let (Ebb fmt) = go ~any (tail s) in
       let (PdPrEbb (padding, precision, fmt)) =
         make_pdprebb padding precision fmt
       in
-      Ebb (Short (padding, precision) :: fmt)
+      Ebb (Short (Conv_d, padding, precision) :: fmt)
+  | Some 'x' ->
+      let (Ebb fmt) = go ~any (tail s) in
+      let (PdPrEbb (padding, precision, fmt)) =
+        make_pdprebb padding precision fmt
+      in
+      Ebb
+        (Short
+           ((if alteration_flag then Conv_Cx else Conv_x), padding, precision)
+        :: fmt)
+  | Some 'X' ->
+      let (Ebb fmt) = go ~any (tail s) in
+      let (PdPrEbb (padding, precision, fmt)) =
+        make_pdprebb padding precision fmt
+      in
+      Ebb
+        (Short
+           ((if alteration_flag then Conv_CX else Conv_X), padding, precision)
+        :: fmt)
   | Some '!' ->
       let (Ebb fmt) = go ~any (tail s) in
       let (PdPrEbb (padding, precision, fmt)) =
@@ -661,30 +703,30 @@ let keval_order :
         k ppf
       in
       keval_padding ppf padding k
-  | Byte (padding, precision) ->
+  | Byte (conv, padding, precision) ->
       let k padding ppf precision v =
-        pp_char ?padding ?precision ppf v;
+        pp_char ~conv ?padding ?precision ppf v;
         k ppf
       in
       let k ppf padding = keval_precision ppf precision (k padding) in
       keval_padding ppf padding k
-  | Short (padding, precision) ->
+  | Short (conv, padding, precision) ->
       let k padding ppf precision v =
-        pp_int ?padding ?precision ppf v;
+        pp_int ~conv ?padding ?precision ppf v;
         k ppf
       in
       let k ppf padding = keval_precision ppf precision (k padding) in
       keval_padding ppf padding k
-  | Long (padding, precision) ->
+  | Long (conv, padding, precision) ->
       let k padding ppf precision v =
-        pp_int32 ?padding ?precision ppf v;
+        pp_int32 ~conv ?padding ?precision ppf v;
         k ppf
       in
       let k ppf padding = keval_precision ppf precision (k padding) in
       keval_padding ppf padding k
-  | Quad (padding, precision) ->
+  | Quad (conv, padding, precision) ->
       let k padding ppf precision v =
-        pp_int64 ?padding ?precision ppf v;
+        pp_int64 ~conv ?padding ?precision ppf v;
         k ppf
       in
       let k ppf padding = keval_precision ppf precision (k padding) in

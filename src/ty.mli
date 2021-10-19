@@ -8,6 +8,7 @@ type endian = [ `BE | `LE | `ME | `NE ]
 
 type ('test, 'v) t = private
   | Default : (default, default) t
+  | Offset : (int64, int64) t
   | Regex : {
       case_insensitive : bool;
       start : bool;
@@ -52,6 +53,8 @@ val pp : Format.formatter -> ('test, 'v) t -> unit
 val pp_of_result : ('test, 'v) t -> Format.formatter -> 'v -> unit
 
 val default : (default, default) t
+
+val offset : (int64, int64) t
 
 val clear : (clear, clear) t
 
