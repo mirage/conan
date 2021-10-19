@@ -1,9 +1,6 @@
 opam-version: "2.0"
 name: "conan"
-synopsis: "Identity type of your file (such as the MIME type)"
-description: """\
-Conan is a re-implementation in OCaml of the file command.
-The library is system-agnostic and can be used with MirageOS."""
+synopsis: "A database of decision trees to recognize MIME type"
 maintainer: "Romain Calascibetta <romain.calascibetta@gmail.com>"
 authors: "Romain Calascibetta <romain.calascibetta@gmail.com>"
 license: "MIT"
