@@ -31,6 +31,7 @@ and kind =
       [ `BE | `LE | `ME ] option * numeric * int64 Arithmetic.t option
     | `Default
     | `Clear
+    | `Offset
     | `Indirect of bool
     | `Regex of (bool * bool * bool * int64) option
     | `String16 of [ `BE | `LE ]

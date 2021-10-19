@@ -105,6 +105,8 @@ let process : type test v. (test, v) Ty.t -> test t -> v -> v option =
   | Quad _, Numeric (w, c) -> if Comparison.process w a c then Some a else None
   | Float _, Float c -> if Comparison.process_float a c then Some a else None
   | Double _, Float c -> if Comparison.process_float a c then Some a else None
+  | Offset, Numeric (Int64, c) ->
+      if Comparison.process Integer.int64 a c then Some a else None
   | Unicode_string `BE, (String c | Unicode_string (`BE, c)) ->
       if Comparison.process_string a c then Some a else None
   | Unicode_string `LE, (String c | Unicode_string (`LE, c)) ->

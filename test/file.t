@@ -5,7 +5,7 @@ Tests the file command
   application/x-object
   $ cc main.o
   $ RES=$(CONAN=../database/ conan.file --mime a.out)
-  $ test "$RES" = "application/x-sharedlib" || test "$RES" = "application/x-executable"
+  $ test "$RES" = "application/x-pie-executable" || test "$RES" = "application/x-executable"
   $ echo "foo" | gzip -c - > foo.gzip
   $ CONAN=../database/ conan.file --mime foo.gzip
   application/gzip

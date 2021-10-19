@@ -217,6 +217,7 @@ let format_of_ty : type test v. (test, v) Ty.t -> _ -> (v -> 'r, 'r) Fmt.fmt =
     | Default ->
         let fmt = Fmt.of_string ~any message Fmt.End in
         with_space Fmt.([ ignore ] ^^ fmt)
+    | Offset -> with_space (Fmt.of_string ~any message Fmt.(Int64 End))
     | Clear ->
         let fmt = Fmt.of_string ~any message Fmt.End in
         with_space Fmt.([ ignore ] ^^ fmt)
@@ -274,6 +275,7 @@ let rule : Parse.rule -> operation =
   let offset = offset o in
   let (Ty ty) =
     match ty with
+    | _, `Offset -> Ty Ty.offset
     | _, `Default -> Ty Ty.default
     | _, `Clear -> Ty Ty.clear
     | _, `Regex (Some (case_insensitive, start, line, limit)) ->
@@ -349,6 +351,9 @@ let rule : Parse.rule -> operation =
   let (Test test) =
     match (test, ty) with
     | `True, _ -> Test Test.always_true
+    | `Numeric c, Offset ->
+        let c = Comparison.map ~f:fst c in
+        Test (Test.numeric Integer.int64 (Comparison.map ~f:Number.to_int64 c))
     | `Numeric c, Byte _ ->
         let c = Comparison.map ~f:fst c in
         Test (Test.numeric Integer.byte (Comparison.map ~f:Number.to_byte c))
@@ -438,6 +443,12 @@ let rule : Parse.rule -> operation =
             test,
             { fmt = (fun () -> format_of_ty ty message); str = message } )
     | Length _, Search _ ->
+        Rule
+          ( offset,
+            ty,
+            test,
+            { fmt = (fun () -> format_of_ty ty message); str = message } )
+    | Numeric (Int64, _), Offset ->
         Rule
           ( offset,
             ty,

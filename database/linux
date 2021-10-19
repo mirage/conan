@@ -1,6 +1,6 @@
 
 #------------------------------------------------------------------------------
-# $File: linux,v 1.69 2019/12/21 16:29:16 christos Exp $
+# $File: linux,v 1.79 2021/04/26 15:56:00 christos Exp $
 # linux:  file(1) magic for Linux files
 #
 # Values for Linux/i386 binaries, from Daniel Quinlan <quinlan@yggdrasil.com>
@@ -83,20 +83,20 @@
 
 # format v1, supported since 1998
 0		name	linux-swap
->0x400	lelong	1	little endian, version %u,
->>0x404	lelong	x	size %u pages,
->>0x408	lelong	x	%u bad pages,
->0x400	belong	1	big endian, version %u,
->>0x404	belong	x	size %u pages,
->>0x408	belong	x	%u bad pages,
->0x41c	string	\0	no label,
->0x41c	string	>\0	LABEL=%s,
->0x40c	belong	x	UUID=%08x
->0x410	beshort	x	\b-%04x
->0x412	beshort	x	\b-%04x
->0x414	beshort	x	\b-%04x
->0x416	belong	x	\b-%08x
->0x41a	beshort	x	\b%04x
+>0x400	lelong		1	little endian, version %u,
+>>0x404	lelong		x	size %u pages,
+>>0x408	lelong		x	%u bad pages,
+>0x400	belong		1	big endian, version %u,
+>>0x404	belong		x	size %u pages,
+>>0x408	belong		x	%u bad pages,
+>0x41c	string		\0	no label,
+>0x41c	string		>\0	LABEL=%s,
+>0x40c	ubelong		x	UUID=%08x
+>0x410	ubeshort	x	\b-%04x
+>0x412	ubeshort	x	\b-%04x
+>0x414	ubeshort	x	\b-%04x
+>0x416	ubelong		x	\b-%08x
+>0x41a	ubeshort	x	\b%04x
 
 0xff6	string		SWAPSPACE2	Linux swap file, 4k page size,
 >0		use			linux-swap
@@ -154,8 +154,8 @@
 >>>>(526.s+0x200) string	>\0	version %s,
 >>498	leshort		1		RO-rootFS,
 >>498	leshort		0		RW-rootFS,
->>508	leshort		>0		root_dev 0x%X,
->>502	leshort		>0		swap_dev 0x%X,
+>>508	leshort		>0		root_dev %#X,
+>>502	leshort		>0		swap_dev %#X,
 >>504	leshort		>0		RAMdisksize %u KB,
 >>506	leshort		0xFFFF		Normal VGA
 >>506	leshort		0xFFFE		Extended VGA
@@ -191,8 +191,8 @@
 
 >497		leshort		!0		x86 kernel
 >>504		leshort		>0		RAMdisksize=%u KB
->>502		leshort		>0		swap=0x%X
->>508		leshort		>0		root=0x%X
+>>502		leshort		>0		swap=%#X
+>>508		leshort		>0		root=%#X
 >>>498		leshort		1		\b-ro
 >>>498		leshort		0		\b-rw
 >>506		leshort		0xFFFF		vga=normal
@@ -234,13 +234,29 @@
 >>&0 string \x80\x00\x20\x00\x00\x00\x00\x00 Z990 32bit kernel
 >>&0 string \x80\x00\x00\x00\x00\x00\x00\x00 Z900 32bit kernel
 
+############################################################################
 # Linux ARM compressed kernel image
 # From: Kevin Cernekee <cernekee@gmail.com>
 # Update: Joerg Jenderek
-36	lelong	0x016f2818	Linux kernel ARM boot executable zImage (little-endian)
+0x24	lelong	0x016f2818	Linux kernel ARM boot executable zImage
+# There are three possible situations: LE, BE with LE bootloader and pure BE.
+# In order to aid telling these apart a new endian flag was added. In order
+# to support kernels before the flag and BE with LE bootloader was added we'll
+# do a negative check against the BE variant of the flag when we see a LE magic.
+>0x30	belong	!0x04030201	(little-endian)
 # raspian "kernel7.img", Vu+ Ultimo4K "kernel_auto.bin"
 !:ext	img/bin
-36	belong	0x016f2818	Linux kernel ARM boot executable zImage (big-endian)
+>0x30	belong	0x04030201	(big-endian)
+0x24	belong	0x016f2818	Linux kernel ARM boot executable zImage (big-endian)
+
+############################################################################
+# Linux AARCH64 kernel image
+0x38    lelong  0x644d5241  Linux kernel ARM64 boot executable Image
+>0x18   lelong  ^1          \b, little-endian
+>0x18   lelong  &1          \b, big-endian
+>0x18   lelong  &2          \b, 4K pages
+>0x18   lelong  &4          \b, 16K pages
+>0x18   lelong  &6          \b, 32K pages
 
 ############################################################################
 # Linux 8086 executable
@@ -295,11 +311,11 @@
 #
 # LVM1
 #
-0x0	string	HM\001		LVM1 (Linux Logical Volume Manager), version 1
->0x12c	string	>\0		, System ID: %s
+0x0	string/b	HM\001		LVM1 (Linux Logical Volume Manager), version 1
+>0x12c	string/b	>\0		, System ID: %s
 
-0x0	string	HM\002		LVM1 (Linux Logical Volume Manager), version 2
->0x12c	string	>\0		, System ID: %s
+0x0	string/b	HM\002		LVM1 (Linux Logical Volume Manager), version 2
+>0x12c	string/b	>\0		, System ID: %s
 
 #  LVM2
 #
@@ -307,56 +323,31 @@
 # of the disk... (from _find_labeller in lib/label/label.c of LVM2)
 #
 # 0x200 seems to be the common case
+0		name	lvm2
+# display UUID in LVM format + display all 32 bytes (instead of max string length: 31)
+>0x0          string  >\x2f          \b, UUID: %.6s
+>0x6          string  >\x2f          \b-%.4s
+>0xa          string  >\x2f          \b-%.4s
+>0xe          string  >\x2f          \b-%.4s
+>0x12         string  >\x2f          \b-%.4s
+>0x16         string  >\x2f          \b-%.4s
+>0x1a         string  >\x2f          \b-%.6s
+>0x20         lequad  x              \b, size: %lld
 
-0x218           string  LVM2\ 001      LVM2 PV (Linux Logical Volume Manager)
+
 # read the offset to add to the start of the header, and the header
 # start in 0x200
->&(&-12.l-0x21) byte    x
-# display UUID in LVM format + display all 32 bytes (instead of max string length: 31)
->>&0x0          string  >\x2f          \b, UUID: %.6s
->>&0x6          string  >\x2f          \b-%.4s
->>&0xa          string  >\x2f          \b-%.4s
->>&0xe          string  >\x2f          \b-%.4s
->>&0x12         string  >\x2f          \b-%.4s
->>&0x16         string  >\x2f          \b-%.4s
->>&0x1a         string  >\x2f          \b-%.6s
->>&0x20         lequad  x              \b, size: %lld
+0x218           string/b  LVM2\ 001      LVM2 PV (Linux Logical Volume Manager)
+>&(&-12.l-0x20) use	lvm2
 
-0x018           string  LVM2\ 001      LVM2 PV (Linux Logical Volume Manager)
->&(&-12.l-0x21) byte    x
-# display UUID in LVM format + display all 32 bytes (instead of max string length: 31)
->>&0x0          string  >\x2f          \b, UUID: %.6s
->>&0x6          string  >\x2f          \b-%.4s
->>&0xa          string  >\x2f          \b-%.4s
->>&0xe          string  >\x2f          \b-%.4s
->>&0x12         string  >\x2f          \b-%.4s
->>&0x16         string  >\x2f          \b-%.4s
->>&0x1a         string  >\x2f          \b-%.6s
->>&0x20         lequad  x              \b, size: %lld
+0x018           string/b  LVM2\ 001      LVM2 PV (Linux Logical Volume Manager)
+>&(&-12.l-0x20) use	lvm2
 
-0x418           string  LVM2\ 001      LVM2 PV (Linux Logical Volume Manager)
->&(&-12.l-0x21) byte    x
-# display UUID in LVM format + display all 32 bytes (instead of max string length: 31)
->>&0x0          string  >\x2f          \b, UUID: %.6s
->>&0x6          string  >\x2f          \b-%.4s
->>&0xa          string  >\x2f          \b-%.4s
->>&0xe          string  >\x2f          \b-%.4s
->>&0x12         string  >\x2f          \b-%.4s
->>&0x16         string  >\x2f          \b-%.4s
->>&0x1a         string  >\x2f          \b-%.6s
->>&0x20         lequad  x              \b, size: %lld
+0x418           string/b  LVM2\ 001      LVM2 PV (Linux Logical Volume Manager)
+>&(&-12.l-0x20) use	lvm2
 
-0x618           string  LVM2\ 001      LVM2 PV (Linux Logical Volume Manager)
->&(&-12.l-0x21) byte    x
-# display UUID in LVM format + display all 32 bytes (instead of max string length: 31)
->>&0x0          string  >\x2f          \b, UUID: %.6s
->>&0x6          string  >\x2f          \b-%.4s
->>&0xa          string  >\x2f          \b-%.4s
->>&0xe          string  >\x2f          \b-%.4s
->>&0x12         string  >\x2f          \b-%.4s
->>&0x16         string  >\x2f          \b-%.4s
->>&0x1a         string  >\x2f          \b-%.6s
->>&0x20         lequad  x              \b, size: %lld
+0x618           string/b  LVM2\ 001      LVM2 PV (Linux Logical Volume Manager)
+>&(&-12.l-0x20) use	lvm2
 
 # LVM snapshot
 # from Jason Farrel
@@ -447,17 +438,16 @@
 # Documentation/devicetree/booting-without-of.txt
 # From Christoph Biedl
 0		belong		0xd00dfeed
-# structure and strings must be within blob
+# structure must be within blob, strings are omitted to handle devicetrees > 1M
 >&(8.L)		byte		x
->>&(12.L)	byte		x
->>>20		belong		>1	Device Tree Blob version %d
->>>>4		belong		x	\b, size=%d
->>>>20		belong		>1
->>>>>28		belong		x	\b, boot CPU=%d
->>>>20		belong		>2
->>>>>32		belong		x	\b, string block size=%d
->>>>20		belong		>16
->>>>>36		belong		x	\b, DT structure block size=%d
+>>20		belong		>1	Device Tree Blob version %d
+>>>4		belong		x	\b, size=%d
+>>>20		belong		>1
+>>>>28		belong		x	\b, boot CPU=%d
+>>>20		belong		>2
+>>>>32		belong		x	\b, string block size=%d
+>>>20		belong		>16
+>>>>36		belong		x	\b, DT structure block size=%d
 
 # glibc locale archive as defined in glibc locale/locarchive.h
 0		lelong		0xde020109	locale archive
@@ -527,3 +517,21 @@
 0		search/1024	/dts-v1/	Device Tree File (v1)
 # beat c code
 !:strength +14
+
+
+# e2fsck undo file
+# David Gilman <davidgilman1@gmail.com>
+0		string		E2UNDO02	e2fsck undo file, version 2
+>44		lelong		x		\b, undo file is
+>>44		lelong&1	0		not finished
+>>44		lelong&1	1		finished
+>48		lelong		x		\b, undo file features:
+>>48		lelong&1	0		lacks filesystem offset
+>>48		lelong&1	1		has filesystem offset
+>>>64		lequad		x		at %#llx
+
+# ansible vault (does not really belong here)
+0		string		$ANSIBLE_VAULT;	Ansible Vault
+>&0		regex		[0-9]*\.[0-9]*	\b, version %s
+>>&0		string		;
+>>>&0		regex		[A-Z0-9]*	\b, encryption %s

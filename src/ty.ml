@@ -8,6 +8,7 @@ type endian = [ `BE | `LE | `ME | `NE ]
 
 type ('test, 'v) t =
   | Default : (default, default) t
+  | Offset : (int64, int64) t
   | Regex : {
       case_insensitive : bool;
       start : bool;
@@ -55,6 +56,7 @@ let serialize_endian ppf = function
 let serialize : type test v. Format.formatter -> (test, v) t -> unit =
  fun ppf -> function
   | Default -> Format.pp_print_string ppf "Conan.Ty.default"
+  | Offset -> Format.pp_print_string ppf "Conan.Ty.offset"
   | Regex { case_insensitive; start; limit; kind } ->
       let serialize_kind ppf = function
         | `Byte -> Format.fprintf ppf "`Byte"
@@ -186,6 +188,7 @@ let pp_date_size ppf = function `s32 -> () | `s64 -> pf ppf "q"
 let pp_of_result : type test v. (test, v) t -> Format.formatter -> v -> unit =
   function
   | Default -> fun ppf Default -> Format.fprintf ppf "x"
+  | Offset -> fun ppf v -> Format.fprintf ppf "%Ld" v
   | Regex _ ->
       fun ppf ropes ->
         let str, off, len = Ropes.to_string ropes in
@@ -207,6 +210,7 @@ let pp : type test v. Format.formatter -> (test, v) t -> unit =
  fun ppf -> function
   | Default -> pf ppf "default"
   | Clear -> pf ppf "clear"
+  | Offset -> pf ppf "offset"
   | Regex
       { case_insensitive = false; start = false; limit = 8192L; kind = `Byte }
     ->
@@ -280,6 +284,8 @@ let pp : type test v. Format.formatter -> (test, v) t -> unit =
         (Arithmetic.pp pp_ptime) arithmetic
 
 let default : (default, default) t = Default
+
+let offset : (int64, int64) t = Offset
 
 let clear : (clear, clear) t = Clear
 
@@ -424,6 +430,7 @@ let process :
   let ( >|= ) x f = x >>= fun x -> return (f x) in
   match ty with
   | Default -> (return <.> ok) (Default : default)
+  | Offset -> (return <.> ok) abs_offset
   | Clear -> (return <.> ok) (Clear : clear)
   | Search { pattern = ""; _ } -> (return <.> ok) ""
   | Search

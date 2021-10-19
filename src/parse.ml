@@ -160,6 +160,8 @@ and default = v "default"
 
 and indirect = v "indirect"
 
+and offset = v "offset"
+
 let _16 = v "16"
 
 type numeric =
@@ -211,6 +213,7 @@ let parse_type s =
     | "pstr" -> prefix ~affix:pstring s >|= fun s -> (`Pstring, s)
     | "defa" -> prefix ~affix:default s >|= fun s -> (`Default, s)
     | "indi" -> prefix ~affix:indirect s >|= fun s -> (`Indirect, s)
+    | "offs" -> prefix ~affix:offset s >|= fun s -> (`Offset, s)
     | _ -> Error (`Invalid_type s)
     | exception _ -> Error (`Invalid_type s)
   in
@@ -316,6 +319,7 @@ let parse_type s =
       match endian with
       | Some ((`LE | `BE) as endian) -> Ok (unsigned, `String16 endian)
       | _ -> Error `Unsupported_type)
+  | `Offset -> Ok (unsigned, `Offset)
   | #numeric as numeric -> (
       let arithmetic, s =
         let arithmetic, s = span ~min:1 ~max:1 ~sat:Arithmetic.is s in
@@ -428,6 +432,7 @@ and kind =
       [ `BE | `LE | `ME ] option * numeric * int64 Arithmetic.t option
     | `Default
     | `Clear
+    | `Offset
     | `Indirect of bool
     | `Regex of (bool * bool * bool * int64) option
     | `String16 of [ `BE | `LE ]
