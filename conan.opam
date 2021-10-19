@@ -6,7 +6,7 @@ Conan is a re-implementation in OCaml of the file command.
 The library is system-agnostic and can be used with MirageOS."""
 maintainer: "Romain Calascibetta <romain.calascibetta@gmail.com>"
 authors: "Romain Calascibetta <romain.calascibetta@gmail.com>"
-license: "MIT"
+license: "BSD-2-Clause"
 homepage: "https://github.com/dinosaure/conan"
 doc: "https://dinosaure.github.io/conan/"
 bug-reports: "https://github.com/dinosaure/conan/issues"
