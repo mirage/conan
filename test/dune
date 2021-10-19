@@ -25,7 +25,6 @@
  (enabled_if %{arch_sixtyfour})
  (package conan-cli)
  (deps
-  (package conan-database)
   (source_tree ../database)
   (source_tree ../unikernel)
   %{bin:conan.file}))
