@@ -72,7 +72,5 @@ type error =
   | `Invalid_use_command ]
 
 val pp_error : Format.formatter -> error -> unit
-
 val parse_line : string -> (line, error) result
-
 val parse_in_channel : in_channel -> (line list, [> error ]) result

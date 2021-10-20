@@ -19,15 +19,10 @@ let serialize pp ppf = function
   | Xor v -> Format.fprintf ppf "@[<2>Conan.Comparison.bitwise_xor@ %a@]" pp v
 
 let equal_to v = Equal v
-
 let different_to v = Different v
-
 let greater_than v = Greater v
-
 let lower_than v = Lower v
-
 let bitwise_and v = And v
-
 let bitwise_xor v = Xor v
 
 let of_string ~with_val = function

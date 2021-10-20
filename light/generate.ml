@@ -56,7 +56,6 @@ let run database output =
   close_out oc
 
 let database = ref None
-
 let output = ref None
 
 let anonymous_argument v =
@@ -73,7 +72,6 @@ let spec =
   ]
 
 let exit_success = 0
-
 let exit_failure = 1
 
 let () =

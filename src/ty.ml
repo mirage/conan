@@ -1,9 +1,6 @@
 type default = Default
-
 type clear = Clear
-
 type unsigned = { unsigned : bool }
-
 type endian = [ `BE | `LE | `ME | `NE ]
 
 type ('test, 'v) t =
@@ -159,15 +156,10 @@ let serialize : type test v. Format.formatter -> (test, v) t -> unit =
         arithmetic
 
 let pf = Format.fprintf
-
 let pp_unsigned ppf { unsigned } = if unsigned then pf ppf "u"
-
 let pp_flag letter ppf = function true -> pf ppf "%c" letter | false -> ()
-
 let pp_int ppf = pf ppf "0x%x"
-
 let pp_int32 ppf = pf ppf "0x%lx"
-
 let pp_int64 ppf = pf ppf "0x%Lx"
 
 let pp_ptime ppf v =
@@ -284,9 +276,7 @@ let pp : type test v. Format.formatter -> (test, v) t -> unit =
         (Arithmetic.pp pp_ptime) arithmetic
 
 let default : (default, default) t = Default
-
 let offset : (int64, int64) t = Offset
-
 let clear : (clear, clear) t = Clear
 
 let regex ?(case_insensitive = false) ?(start = false) ?(limit = 8192L) kind =
@@ -323,7 +313,6 @@ let with_pattern pattern = function
   | t -> t
 
 let str_unicode endian = Unicode_string endian
-
 let system_endian = if Sys.big_endian then `BE else `LE
 
 let numeric :
@@ -374,15 +363,11 @@ let indirect v = Indirect v
 open Sigs
 
 let ( <.> ) f g x = f (g x)
-
 let newline = "\n" (* TODO: windows *)
 
 let ok x = Ok x
-
 let of_option ~error = function Some x -> Ok x | None -> Error (error ())
-
 let reword_error f = function Ok x -> Ok x | Error err -> Error (f err)
-
 let id x = x
 
 let read_float ({ bind; return } as scheduler) syscall fd endian =

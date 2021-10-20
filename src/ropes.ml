@@ -1,7 +1,6 @@
 type t = Str of string * int * int | App of t * t * int * int
 
 let empty = ""
-
 let empty = Str (empty, 0, 0)
 
 let of_string ?(off = 0) ?len str =
@@ -11,7 +10,6 @@ let of_string ?(off = 0) ?len str =
   Str (str, off, len)
 
 let length = function Str (_, _, len) -> len | App (_, _, len, _) -> len
-
 let height = function Str _ -> 0 | App (_, _, _, height) -> height
 
 let app = function

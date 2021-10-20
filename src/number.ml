@@ -1,7 +1,6 @@
 type t = Int of int64 | Float of float
 
 let int64 v = Int v
-
 let float v = Float v
 
 let pp ppf = function
@@ -12,7 +11,6 @@ let to_float = function Int v -> Int64.to_float v | Float v -> v
 
 (* TODO(dinosaure): check with 32bits/64bits platform. *)
 let to_int = function Int v -> Int64.to_int v | Float v -> Float.to_int v
-
 let to_int64 = function Int v -> v | Float v -> Int64.of_float v
 
 let to_int32 = function

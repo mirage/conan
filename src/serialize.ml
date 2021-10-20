@@ -1,9 +1,7 @@
 type 'a t = Format.formatter -> 'a -> unit
 
 let cut ppf _ = Format.pp_print_cut ppf ()
-
 let fmt fmt ppf = Format.fprintf ppf fmt
-
 let char ppf chr = Format.fprintf ppf "'\\%03d'" (Char.code chr)
 
 let int ppf n =
@@ -43,7 +41,6 @@ let surround s0 s1 pp ppf v =
     pp_print_string ppf s1)
 
 let brackets pp = box ~indent:1 (surround "[" "]" pp)
-
 let parens pp = box ~indent:1 (surround "(" ")" pp)
 
 let iter ?sep:(pp_sep = cut) iter pp ppf v =
@@ -59,7 +56,6 @@ let ( ++ ) pp0 pp1 ppf v =
   pp1 ppf v
 
 let using f pp ppf v = pp ppf (f v)
-
 let list ?sep pp = iter ?sep List.iter pp
 
 let semi ppf _ =
@@ -71,7 +67,6 @@ let comma ppf _ =
   Format.pp_print_space ppf ()
 
 let list pp = brackets (list ~sep:semi (box pp))
-
 let pair pp0 pp1 = parens (using fst (box pp0) ++ comma ++ using snd (box pp1))
 
 module Re_serialize = struct
@@ -99,23 +94,14 @@ module Re_serialize = struct
       j
 
   and beg_of_line ppf () = Format.pp_print_string ppf "Re.bol"
-
   and end_of_line ppf () = Format.pp_print_string ppf "Re.eol"
-
   and beg_of_word ppf () = Format.pp_print_string ppf "Re.bow"
-
   and end_of_word ppf () = Format.pp_print_string ppf "Re.eow"
-
   and not_bound ppf () = Format.pp_print_string ppf "Re.not_boundary"
-
   and beg_of_str ppf () = Format.pp_print_string ppf "Re.bos"
-
   and end_of_str ppf () = Format.pp_print_string ppf "Re.eos"
-
   and last_end_of_line ppf () = Format.pp_print_string ppf "Re.leol"
-
   and start ppf () = Format.pp_print_string ppf "Re.start"
-
   and stop ppf () = Format.pp_print_string ppf "Re.stop"
 
   and sem ppf (sem, t) =
@@ -137,7 +123,6 @@ module Re_serialize = struct
     Format.fprintf ppf "@[<2>Re.no_group @[%a@]@]" (parens view) t
 
   and nest ppf t = Format.fprintf ppf "@[<2>Re.nest @[%a@]@]" (parens view) t
-
   and case ppf t = Format.fprintf ppf "@[<2>Re.case @[%a@]@]" (parens view) t
 
   and no_case ppf t =

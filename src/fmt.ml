@@ -4,7 +4,6 @@
    with [Hmap]. See [Atom]. *)
 
 type ('a, 'b) refl = Refl : ('a, 'a) refl
-
 type formatter = Format.formatter
 
 module Hmap = struct
@@ -14,7 +13,6 @@ module Hmap = struct
 
   module type Tid = sig
     type t
-
     type _ Tid.t += Tid : t Tid.t
   end
 
@@ -23,7 +21,6 @@ module Hmap = struct
   let tid () (type s) =
     let module M = struct
       type t = s
-
       type _ Tid.t += Tid : t Tid.t
     end in
     (module M : Tid with type t = s)
@@ -51,9 +48,7 @@ module Hmap = struct
     type t = V : 'a key -> t
 
     let hide_type k = V k
-
     let equal (V k0) (V k1) = (compare : int -> int -> int) k0.uid k1.uid = 0
-
     let compare (V k0) (V k1) = (compare : int -> int -> int) k0.uid k1.uid
   end
 
@@ -74,7 +69,6 @@ module Hmap = struct
   type t = binding Map.t
 
   let empty = Map.empty
-
   let add k v t = Map.add (V k) (B (k, v)) t
 
   let find :
@@ -181,18 +175,15 @@ and ('ty0, 'v0, 'ty1, 'v1) tyrel =
   | End : ('v0, 'v0, 'v1, 'v1) tyrel
 
 type ('v, 'r) tw = T : ('u, 'v) fmt * ('v, 'w) ty -> ('u, 'w) tw
-
 type ('v, 'r) pw = P : ('u, 'v) padding * ('v, 'w) ty -> ('u, 'w) pw
 
 type ('v, 'r) ppw =
   | V : ('a, 'b) padding * ('b, 'c) precision * ('c, 'd) ty -> ('a, 'd) ppw
 
 type v = Fmt : ('ty, 'v) fmt -> v
-
 type w = Ty : ('ty, 'v) ty -> w
 
 let pf = Format.fprintf
-
 let strf = Format.asprintf
 
 let padding_and_precision_to_padding :
@@ -310,7 +301,6 @@ let rec ty_of_fmt : type v r. (v, r) fmt -> (v, r) ty = function
       padding @ String (ty_of_fmt fmt)
 
 exception Invalid_type
-
 exception Invalid_key
 
 let gen_padding :
@@ -459,21 +449,15 @@ let pp_string ?padding ppf v =
   | _ -> pf ppf "%s" v
 
 type wpd = Pd : ('v, 'r) padding -> wpd
-
 type wpr = Pr : ('v, 'r) precision -> wpr
 
 let is_flag = function '-' | '0' | '#' -> true | _ -> false
-
 let is_dash = function '-' -> true | _ -> false
-
 let is_zero = function '0' -> true | _ -> false
-
 let is_digit = function '0' .. '9' -> true | _ -> false
-
 let is_hash = function '#' -> true | _ -> false
 
 type s = Sub.t
-
 type 'r ebb = Ebb : ('x, 'r) fmt -> 'r ebb
 
 type ('x, 'r) pdebb =
@@ -639,11 +623,8 @@ let ty_of_string : type x. any:x Hmap.key -> string -> w =
   Ty (ty_of_fmt fmt)
 
 let noop : _ order = Noop
-
 let ignore : _ order = Ignore
-
 let const pp v = Const (pp, v)
-
 let ( $ ) = const
 
 let padding = function
