@@ -6,10 +6,10 @@ Conan is a re-implementation in OCaml of the file command.
 The library is system-agnostic and can be used with MirageOS."""
 maintainer: "Romain Calascibetta <romain.calascibetta@gmail.com>"
 authors: "Romain Calascibetta <romain.calascibetta@gmail.com>"
-license: "MIT"
-homepage: "https://github.com/dinosaure/conan"
-doc: "https://dinosaure.github.io/conan/"
-bug-reports: "https://github.com/dinosaure/conan/issues"
+license: "BSD-2-Clause"
+homepage: "https://github.com/mirage/conan"
+doc: "https://mirage.github.io/conan/"
+bug-reports: "https://github.com/mirage/conan/issues"
 depends: [
   "ocaml"               {>= "4.08.0"}
   "re"                  {>= "1.9.0"}
@@ -37,4 +37,4 @@ build: [
   ["dune" "install" "--create-install-files" name]
   ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
-dev-repo: "git+https://github.com/dinosaure/conan.git"
+dev-repo: "git+https://github.com/mirage/conan.git"

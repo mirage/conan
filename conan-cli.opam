@@ -6,10 +6,10 @@ Conan is a re-implementation in OCaml of the file command.
 The library is system-agnostic and can be used with MirageOS."""
 maintainer: "Romain Calascibetta <romain.calascibetta@gmail.com>"
 authors: "Romain Calascibetta <romain.calascibetta@gmail.com>"
-license: "MIT"
-homepage: "https://github.com/dinosaure/conan"
-doc: "https://dinosaure.github.io/conan/"
-bug-reports: "https://github.com/dinosaure/conan/issues"
+license: "BSD-2-Clause"
+homepage: "https://github.com/mirage/conan"
+doc: "https://mirage.github.io/conan/"
+bug-reports: "https://github.com/mirage/conan/issues"
 depends: [
   "ocaml"          {>= "4.08.0"}
   "conan"          {= version}
@@ -21,6 +21,15 @@ depends: [
   "crowbar"        {with-test}
   "fmt"            {with-test}
   "rresult"        {with-test}
+  "mirage"              {with-test}
+  "mirage-unix"         {with-test}
+  "mirage-bootvar-unix" {with-test}
+  "mirage-console-unix" {with-test}
+  "mirage-clock-unix"   {with-test}
+  "mirage-logs"         {with-test}
+  "mirage-types"        {with-test}
+  "mirage-types-lwt"    {with-test}
+  "mirage-runtime"      {with-test}
 ]
 conflicts: ["ocaml-option-flambda"]
 build: [
@@ -29,4 +38,4 @@ build: [
   ["dune" "install" "--create-install-files" name]
   ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
-dev-repo: "git+https://github.com/dinosaure/conan.git"
+dev-repo: "git+https://github.com/mirage/conan.git"
