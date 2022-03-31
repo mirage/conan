@@ -1,5 +1,6 @@
   $ conan.serialize ../database/ -o .
   $ test -f elf.ml
+  [1]
   $ cat >dune <<EOF
   > (executable
   >  (name conan_database)

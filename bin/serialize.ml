@@ -1,4 +1,4 @@
-let name = ref "conan_database.ml"
+let name = ref "conan_magic_database.ml"
 
 let ( / ) = Filename.concat
 
@@ -28,7 +28,9 @@ let serialize_into_multiple_files output filename tree =
   let rec go (idx, acc) = function
     | [] -> List.rev acc
     | (elt, tree) :: r ->
-        let filename' = Format.asprintf "%s_%03d.ml" (ocamlify filename) idx in
+        let filename' =
+          Format.asprintf "%s_%03d.ml" (ocamlify ("conan_" ^ filename)) idx
+        in
         let oc = open_out (output / filename') in
         let ppf = Format.formatter_of_out_channel oc in
         Format.fprintf ppf "let tree = @[<2>%a@]\n%!" Conan.Tree.serialize tree;
@@ -37,14 +39,14 @@ let serialize_into_multiple_files output filename tree =
   in
   let[@warning "-8"] (Conan.Tree.Node lst) = tree in
   let elts = go (0, []) lst in
-  let filename' = Format.asprintf "%s.ml" (ocamlify filename) in
+  let filename' = Format.asprintf "%s.ml" (ocamlify ("conan_" ^ filename)) in
   let oc = open_out (output / filename') in
   let ppf = Format.formatter_of_out_channel oc in
   List.iteri
     (fun idx elt ->
       Format.fprintf ppf "let tree_%03d = (@[<1>%a,@ %s_%03d.tree@])\n%!" idx
         Conan.Tree.serialize_elt elt
-        (String.capitalize_ascii (ocamlify filename))
+        (String.capitalize_ascii (ocamlify ("conan_" ^ filename)))
         idx)
     elts;
   Format.fprintf ppf "let tree = Conan.Tree.Unsafe.node @[%a@]\n%!"
@@ -72,13 +74,13 @@ let serialize only_mime database output filename =
       if Conan.Tree.weight tree >= 2000 then
         serialize_into_multiple_files output filename tree
       else
-        let filename' = ocamlify filename ^ ".ml" in
+        let filename' = ocamlify ("conan_" ^ filename) ^ ".ml" in
         let oc = open_out (output / filename') in
         let ppf = Format.formatter_of_out_channel oc in
         Format.fprintf ppf "let tree = @[<2>%a@]\n%!" Conan.Tree.serialize tree;
         close_out oc
   | Error _err ->
-      let filename' = ocamlify filename ^ ".ml" in
+      let filename' = ocamlify ("conan_" ^ filename) ^ ".ml" in
       let oc = open_out (output / filename') in
       let ppf = Format.formatter_of_out_channel oc in
       Format.fprintf ppf "let tree = Conan.Tree.empty\n%!";
@@ -103,19 +105,22 @@ let simulate only_mime database output filename =
       in
       if Conan.Tree.weight tree >= 2000 then
         let[@warning "-8"] (Conan.Tree.Node lst) = tree in
-        (output / Format.asprintf "%s.ml" (ocamlify filename))
+        (output / Format.asprintf "%s.ml" (ocamlify ("conan_" ^ filename)))
         :: List.mapi
              (fun idx _ ->
-               output / Format.asprintf "%s_%03d.ml" (ocamlify filename) idx)
+               output
+               / Format.asprintf "%s_%03d.ml"
+                   (ocamlify ("conan_" ^ filename))
+                   idx)
              lst
-      else [ output / (ocamlify filename ^ ".ml") ]
-  | Error _err -> [ output / (ocamlify filename ^ ".ml") ]
+      else [ output / (ocamlify ("conan_" ^ filename) ^ ".ml") ]
+  | Error _err -> [ output / (ocamlify ("conan_" ^ filename) ^ ".ml") ]
 
 let run only_mime database output =
   let files = Sys.readdir database in
   let files = Array.to_list files in
   List.iter (serialize only_mime database output) files;
-  let files = List.map ocamlify files in
+  let files = List.map (fun file -> ocamlify ("conan_" ^ file)) files in
   let oc = open_out (output / !name) in
   let ppf = Format.formatter_of_out_channel oc in
   List.iter

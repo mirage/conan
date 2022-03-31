@@ -41,7 +41,7 @@ let run database output =
   (run conan.serialize %s -o %s)))
 
 (library
- (name conan_database)
+ (name conan_magic_database)
  (public_name conan-database)
  (modules @[<hov>%a@])
  (libraries conan))
@@ -65,8 +65,9 @@ let spec =
   [
     ( "-o",
       Arg.String (fun str -> output := Some str),
-      "The directory destination where the conan_database.ml will be made. By \
-       default, we emit the OCaml code into the given database directory." );
+      "The directory destination where the conan_magic_database.ml will be \
+       made. By default, we emit the OCaml code into the given database \
+       directory." );
   ]
 
 let exit_success = 0
