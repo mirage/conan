@@ -14,3 +14,6 @@ Tests the file command
   $ tar cf tarball.tar tarball
   $ RES=$(CONAN=../database/ conan.file --mime tarball.tar)
   $ test "$RES" = "application/x-gtar" || test "$RES" = "application/x-ustar"
+  $ echo "<html><h1>Hello World!</h1></html>" > index.html
+  $ CONAN=../database/ conan.file --mime index.html
+  text/html

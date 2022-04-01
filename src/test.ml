@@ -145,7 +145,14 @@ let process : type test v. (test, v) Ty.t -> test t -> v -> v option =
           let a = Buffer.contents buf in
           if Comparison.process_string a c then Some a else None
       | _ -> None)
-  | Search _, String c -> if Comparison.process_string a c then Some a else None
+  | Search _, String c ->
+      let a' = Comparison.value c in
+      let a' =
+        if String.length a > String.length a' then
+          String.sub a 0 (String.length a')
+        else a
+      in
+      if Comparison.process_string a' c then Some a else None
   | Regex { case_insensitive; _ }, Regex c -> (
       let re = Comparison.value c in
       let re = if case_insensitive then Re.no_case re else re in
