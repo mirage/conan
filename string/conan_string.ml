@@ -97,6 +97,11 @@ module Str = struct
   let read t required =
     match read t required with
     | Some str when String.length str >= required -> Ok str
+    | Some str ->
+        let tmp = Bytes.create required in
+        Bytes.blit_string str 0 tmp 0 (String.length str);
+        Bytes.fill tmp (String.length str) (required - String.length str) '\000';
+        Ok (Bytes.unsafe_to_string tmp)
     | _ -> Error `Out_of_bound
 
   let syscall =

@@ -25,4 +25,21 @@ let test01 =
   make_simple_test ~name:"test01 (zlib)"
     "\x78\x9c\x4b\xcb\xcf\x07\x00\x02\x82\x01\x45" (Some "application/zlib")
 
-let () = Alcotest.run "file" [ ("simple", [ test00; test01 ]) ]
+let test02 =
+  make_simple_test ~name:"test02 (html)"
+    {html|<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>unipi</title>
+</head>
+
+<body>
+<h1>Hello MirageOS!</h1>
+</body>
+</html>
+|html}
+    (Some "text/html")
+
+let () = Alcotest.run "file" [ ("simple", [ test00; test01; test02 ]) ]
