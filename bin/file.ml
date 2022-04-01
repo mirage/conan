@@ -64,4 +64,6 @@ let () =
       let fmt = if !mime then `MIME else `Usual in
       match run ~fmt filename with
       | Ok () -> exit exit_success
-      | Error err -> Format.eprintf "%s: %a.\n%!" Sys.argv.(0) pp_error err)
+      | Error err ->
+          Format.eprintf "%s: %a.\n%!" Sys.argv.(0) pp_error err;
+          exit 1)
