@@ -14,13 +14,9 @@ let serializer_of : type a. a t -> Format.formatter -> a -> unit = function
   | Int64 -> Serialize.int64
 
 let byte = Byte
-
 let short = Short
-
 let int32 = Int32
-
 let int64 = Int64
-
 let pf = Format.fprintf
 
 let pp : type a. a t -> Format.formatter -> a -> unit = function

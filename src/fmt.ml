@@ -4,7 +4,6 @@
    with [Hmap]. See [Atom]. *)
 
 type ('a, 'b) refl = Refl : ('a, 'a) refl
-
 type formatter = Format.formatter
 
 module Hmap = struct
@@ -14,7 +13,6 @@ module Hmap = struct
 
   module type Tid = sig
     type t
-
     type _ Tid.t += Tid : t Tid.t
   end
 
@@ -23,7 +21,6 @@ module Hmap = struct
   let tid () (type s) =
     let module M = struct
       type t = s
-
       type _ Tid.t += Tid : t Tid.t
     end in
     (module M : Tid with type t = s)
@@ -51,9 +48,7 @@ module Hmap = struct
     type t = V : 'a key -> t
 
     let hide_type k = V k
-
     let equal (V k0) (V k1) = (compare : int -> int -> int) k0.uid k1.uid = 0
-
     let compare (V k0) (V k1) = (compare : int -> int -> int) k0.uid k1.uid
   end
 
@@ -74,7 +69,6 @@ module Hmap = struct
   type t = binding Map.t
 
   let empty = Map.empty
-
   let add k v t = Map.add (V k) (B (k, v)) t
 
   let find :
@@ -181,18 +175,15 @@ and ('ty0, 'v0, 'ty1, 'v1) tyrel =
   | End : ('v0, 'v0, 'v1, 'v1) tyrel
 
 type ('v, 'r) tw = T : ('u, 'v) fmt * ('v, 'w) ty -> ('u, 'w) tw
-
 type ('v, 'r) pw = P : ('u, 'v) padding * ('v, 'w) ty -> ('u, 'w) pw
 
 type ('v, 'r) ppw =
   | V : ('a, 'b) padding * ('b, 'c) precision * ('c, 'd) ty -> ('a, 'd) ppw
 
 type v = Fmt : ('ty, 'v) fmt -> v
-
 type w = Ty : ('ty, 'v) ty -> w
 
 let pf = Format.fprintf
-
 let strf = Format.asprintf
 
 let padding_and_precision_to_padding :
@@ -310,7 +301,6 @@ let rec ty_of_fmt : type v r. (v, r) fmt -> (v, r) ty = function
       padding @ String (ty_of_fmt fmt)
 
 exception Invalid_type
-
 exception Invalid_key
 
 let gen_padding :
@@ -419,15 +409,19 @@ let pp_int ~unsigned ~conv:_ ?padding ?precision ppf v =
   | false, Some (`Zero padding), _ -> pf ppf "%0*d" padding v
   | false, Some (`Right padding), None -> pf ppf "%*d" padding v
   | false, None, Some precision -> pf ppf "%.*d" precision v
-  | false, Some (`Left padding), Some precision -> pf ppf "%-*.*d" padding precision v
-  | false, Some (`Right padding), Some precision -> pf ppf "%*.*d" padding precision v
+  | false, Some (`Left padding), Some precision ->
+      pf ppf "%-*.*d" padding precision v
+  | false, Some (`Right padding), Some precision ->
+      pf ppf "%*.*d" padding precision v
   | true, None, None -> pf ppf "%u" v
   | true, Some (`Left padding), None -> pf ppf "%-*u" padding v
   | true, Some (`Zero padding), _ -> pf ppf "%0*u" padding v
   | true, Some (`Right padding), None -> pf ppf "%*u" padding v
   | true, None, Some precision -> pf ppf "%.*u" precision v
-  | true, Some (`Left padding), Some precision -> pf ppf "%-*.*u" padding precision v
-  | true, Some (`Right padding), Some precision -> pf ppf "%*.*u" padding precision v
+  | true, Some (`Left padding), Some precision ->
+      pf ppf "%-*.*u" padding precision v
+  | true, Some (`Right padding), Some precision ->
+      pf ppf "%*.*u" padding precision v
 
 let pp_int32 ~unsigned ~conv:_ ?padding ?precision ppf v =
   match (unsigned, padding, precision) with
@@ -436,15 +430,19 @@ let pp_int32 ~unsigned ~conv:_ ?padding ?precision ppf v =
   | false, Some (`Zero padding), _ -> pf ppf "%0*ld" padding v
   | false, Some (`Right padding), None -> pf ppf "%*ld" padding v
   | false, None, Some precision -> pf ppf "%.*ld" precision v
-  | false, Some (`Left padding), Some precision -> pf ppf "%-*.*ld" padding precision v
-  | false, Some (`Right padding), Some precision -> pf ppf "%*.*ld" padding precision v
+  | false, Some (`Left padding), Some precision ->
+      pf ppf "%-*.*ld" padding precision v
+  | false, Some (`Right padding), Some precision ->
+      pf ppf "%*.*ld" padding precision v
   | true, None, None -> pf ppf "%lu" v
   | true, Some (`Left padding), None -> pf ppf "%-*lu" padding v
   | true, Some (`Zero padding), _ -> pf ppf "%0*lu" padding v
   | true, Some (`Right padding), None -> pf ppf "%*lu" padding v
   | true, None, Some precision -> pf ppf "%.*lu" precision v
-  | true, Some (`Left padding), Some precision -> pf ppf "%-*.*lu" padding precision v
-  | true, Some (`Right padding), Some precision -> pf ppf "%*.*lu" padding precision v
+  | true, Some (`Left padding), Some precision ->
+      pf ppf "%-*.*lu" padding precision v
+  | true, Some (`Right padding), Some precision ->
+      pf ppf "%*.*lu" padding precision v
 
 let pp_int64 ~unsigned ~conv:_ ?padding ?precision ppf v =
   match (unsigned, padding, precision) with
@@ -453,15 +451,19 @@ let pp_int64 ~unsigned ~conv:_ ?padding ?precision ppf v =
   | false, Some (`Zero padding), _ -> pf ppf "%0*Ld" padding v
   | false, Some (`Right padding), None -> pf ppf "%*Ld" padding v
   | false, None, Some precision -> pf ppf "%.*Ld" precision v
-  | false, Some (`Left padding), Some precision -> pf ppf "%-*.*Ld" padding precision v
-  | false, Some (`Right padding), Some precision -> pf ppf "%*.*Ld" padding precision v
+  | false, Some (`Left padding), Some precision ->
+      pf ppf "%-*.*Ld" padding precision v
+  | false, Some (`Right padding), Some precision ->
+      pf ppf "%*.*Ld" padding precision v
   | true, None, None -> pf ppf "%Lu" v
   | true, Some (`Left padding), None -> pf ppf "%-*Lu" padding v
   | true, Some (`Zero padding), _ -> pf ppf "%0*Lu" padding v
   | true, Some (`Right padding), None -> pf ppf "%*Lu" padding v
   | true, None, Some precision -> pf ppf "%.*Lu" precision v
-  | true, Some (`Left padding), Some precision -> pf ppf "%-*.*Lu" padding precision v
-  | true, Some (`Right padding), Some precision -> pf ppf "%*.*Lu" padding precision v
+  | true, Some (`Left padding), Some precision ->
+      pf ppf "%-*.*Lu" padding precision v
+  | true, Some (`Right padding), Some precision ->
+      pf ppf "%*.*Lu" padding precision v
 
 let pp_float ?padding ?precision ppf v =
   match (padding, precision) with
@@ -480,21 +482,15 @@ let pp_string ?padding ppf v =
   | _ -> pf ppf "%s" v
 
 type wpd = Pd : ('v, 'r) padding -> wpd
-
 type wpr = Pr : ('v, 'r) precision -> wpr
 
 let is_flag = function '-' | '0' | '#' -> true | _ -> false
-
 let is_dash = function '-' -> true | _ -> false
-
 let is_zero = function '0' -> true | _ -> false
-
 let is_digit = function '0' .. '9' -> true | _ -> false
-
 let is_hash = function '#' -> true | _ -> false
 
 type s = Sub.t
-
 type 'r ebb = Ebb : ('x, 'r) fmt -> 'r ebb
 
 type ('x, 'r) pdebb =
@@ -601,7 +597,10 @@ and parse_flag :
       in
       Ebb
         (Short
-           (true, (if alteration_flag then Conv_Cx else Conv_x), padding, precision)
+           ( true,
+             (if alteration_flag then Conv_Cx else Conv_x),
+             padding,
+             precision )
         :: fmt)
   | Some 'X' ->
       let (Ebb fmt) = go ~any (tail s) in
@@ -610,7 +609,10 @@ and parse_flag :
       in
       Ebb
         (Short
-           (true, (if alteration_flag then Conv_CX else Conv_X), padding, precision)
+           ( true,
+             (if alteration_flag then Conv_CX else Conv_X),
+             padding,
+             precision )
         :: fmt)
   | Some '!' ->
       let (Ebb fmt) = go ~any (tail s) in
@@ -666,11 +668,8 @@ let ty_of_string : type x. any:x Hmap.key -> string -> w =
   Ty (ty_of_fmt fmt)
 
 let noop : _ order = Noop
-
 let ignore : _ order = Ignore
-
 let const pp v = Const (pp, v)
-
 let ( $ ) = const
 
 let padding = function

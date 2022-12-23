@@ -49,11 +49,8 @@ let serialize : type a. Format.formatter -> a t -> unit =
         comparison
 
 let pf = Format.fprintf
-
 let pp_int ppf = pf ppf "%d"
-
 let pp_float ppf = pf ppf "%f"
-
 let pp_string ppf = pf ppf "%S"
 
 let pp_ptime ppf v =
@@ -77,21 +74,13 @@ let pp : type a. Format.formatter -> a t -> unit =
   | Date v -> pf ppf "date:%a" (Comparison.pp pp_ptime) v
 
 let always_true = True
-
 let always_false = False
-
 let numeric w c = Numeric (w, c)
-
 let float c = Float c
-
 let str_unicode endian c = Unicode_string (endian, c)
-
 let string c = String c
-
 let length c = Length c
-
 let regex c = Regex c
-
 let date c = Date c
 
 let process : type test v. (test, v) Ty.t -> test t -> v -> v option =

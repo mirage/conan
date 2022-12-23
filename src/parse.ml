@@ -8,55 +8,34 @@ let string_tail s =
   if String.length s > 0 then String.sub s 1 (String.length s - 1) else ""
 
 let ( >>= ) x f = match x with Ok x -> f x | Error err -> Error err
-
 let ( >|= ) x f = match x with Ok x -> Ok (f x) | Error err -> Error err
-
 let ( <.> ) f g x = f (g x)
 
 open Sub
 
 let is_wsp = function ' ' | '\t' .. '\r' -> true | _ -> false
-
 let is_digit = function '0' .. '9' -> true | _ -> false
-
 let is_greater = function '>' -> true | _ -> false
-
 let is_ampersand = function '&' -> true | _ -> false
-
 let is_c = function 'c' -> true | _ -> false
-
 let is_C = function 'C' -> true | _ -> false
-
 let is_b = function 'b' -> true | _ -> false
-
 let is_B = function 'B' -> true | _ -> false
-
 let is_s = function 's' -> true | _ -> false
-
 let is_r = function 'r' -> true | _ -> false
-
 let is_l = function 'l' -> true | _ -> false
-
 let is_t = function 't' -> true | _ -> false
-
 let is_T = function 'T' -> true | _ -> false
-
 let is_w = function 'w' -> true | _ -> false
-
 let is_W = function 'W' -> true | _ -> false
 
 let lparent = v "("
-
 and rparent = v ")"
 
 let ampersand = v "&"
-
 let tilde = v "~"
-
 let dot = v "."
-
 let u = v "u"
-
 let slash = v "/"
 
 let parse_disp s =
@@ -119,47 +98,27 @@ let prefix ~affix s =
   | None -> Error (`No_prefix (affix, s))
 
 let le = v "le"
-
 and be = v "be"
-
 and me = v "me"
 
 let byte = v "byte"
-
 and long = v "long"
-
 and quad = v "quad"
-
 and date = v "date"
-
 and clear = v "clear"
-
 and short = v "short"
-
 and ldate = v "ldate"
-
 and regex = v "regex"
-
 and qdate = v "qdate"
-
 and float = v "float"
-
 and double = v "double"
-
 and qldate = v "qldate"
-
 and qwdate = v "qwdate"
-
 and search = v "search"
-
 and string = v "string"
-
 and pstring = v "pstring"
-
 and default = v "default"
-
 and indirect = v "indirect"
-
 and offset = v "offset"
 
 let _16 = v "16"
@@ -178,7 +137,6 @@ type numeric =
   | `Float ]
 
 type default = [ `Default ]
-
 type regex = [ `Regex ]
 
 let parse_type s =
@@ -411,7 +369,6 @@ let parse_use offset s =
   else Error `Invalid_use_command
 
 let hws = v "\t"
-
 let wsp = v " "
 
 type rule = offset * kind * test * message
@@ -481,8 +438,7 @@ let best_effort s =
                     if is_suffix ~affix:escape hd then (elt :: test, [])
                     else (test, [ elt ])
                 | _, message -> (test, elt :: message))
-              ([ hd ], [])
-              tl
+              ([ hd ], []) tl
           in
           let test = concat ~sep:wsp (List.rev test) in
           Ok (test, List.rev message))

@@ -1,7 +1,5 @@
 let name = ref "conan_magic_database.ml"
-
 let ( / ) = Filename.concat
-
 let identity x = x
 
 let ocamlify s =
@@ -142,11 +140,8 @@ let dry_run only_mime database output =
   List.iter (Format.printf "%s\n%!") ((output / !name) :: files)
 
 let database = ref None
-
 let output = ref None
-
 let dry_run_flag = ref false
-
 let only_mime_flag = ref false
 
 let anonymous_argument v =
@@ -179,7 +174,6 @@ let spec =
   ]
 
 let exit_success = 0
-
 let exit_failure = 1
 
 let () =

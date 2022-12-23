@@ -79,21 +79,13 @@ let is = function
   | _ -> false
 
 let add v = Add v
-
 let sub v = Sub v
-
 let mul v = Mul v
-
 let div v = Div v
-
 let rem v = Mod v
-
 let logand v = Bitwise_and v
-
 let logxor v = Bitwise_xor v
-
 let invert v = Invert v
-
 let logor v = Bitwise_or v
 
 let rec process : type a. ?unsigned:bool -> a Integer.t -> a -> a t -> a =
