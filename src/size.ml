@@ -1,7 +1,5 @@
 let invalid_arg fmt = Format.kasprintf invalid_arg fmt
-
 let ( <.> ) f g x = f (g x)
-
 let ok x = Ok x
 
 type t =
@@ -29,31 +27,18 @@ let serialize ppf = function
   | Bequad -> Format.pp_print_string ppf "Conan.Size.bequad"
 
 let byte = Byte
-
 let leshort = Leshort
-
 let beshort = Beshort
-
 let lelong = Lelong
-
 let belong = Belong
-
 let melong = Melong
-
 let leid3 = Leid3
-
 let beid3 = Beid3
-
 let lequad = Lequad
-
 let bequad = Bequad
-
 let short = if Sys.big_endian then Beshort else Leshort
-
 let long = if Sys.big_endian then Belong else Lelong
-
 let id3 = if Sys.big_endian then Beid3 else Leid3
-
 let quad = if Sys.big_endian then Bequad else Lequad
 
 let of_string = function
@@ -92,9 +77,7 @@ let pp ppf = function
 open Sigs
 
 external swap16 : int -> int = "%bswap16"
-
 external swap32 : int32 -> int32 = "%bswap_int32"
-
 external swap64 : int64 -> int64 = "%bswap_int64"
 
 let invert { bind; return } syscall =

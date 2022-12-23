@@ -1,5 +1,4 @@
 let invalid_arg fmt = Format.kasprintf invalid_arg fmt
-
 let reword_error f = function Ok _ as v -> v | Error err -> Error (f err)
 
 open Sigs

@@ -24,11 +24,8 @@ let with_output output t =
   else t
 
 let output { output; _ } = output
-
 let clear { mime; _ } = { output = None; mime }
-
 let mime { mime; _ } = mime
-
 let empty = { output = None; mime = None }
 
 let concat a0 a1 =

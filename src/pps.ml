@@ -1,7 +1,8 @@
 let char_to_int : char Fmt.Hmap.Key.key = Fmt.Hmap.Key.create ()
 
 let pp_char_to_int ?padding ?precision ppf v =
-  Fmt.pp_int ~unsigned:false ~conv:Fmt.Conv_d ?padding ?precision ppf (Char.code v)
+  Fmt.pp_int ~unsigned:false ~conv:Fmt.Conv_d ?padding ?precision ppf
+    (Char.code v)
 
 let int32_to_int : int32 Fmt.Hmap.Key.key = Fmt.Hmap.Key.create ()
 

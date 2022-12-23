@@ -10,25 +10,14 @@ type 'a t = private
   | Date : Ptime.Span.t Comparison.t -> Ptime.t t
 
 val serialize : Format.formatter -> 'a t -> unit
-
 val pp : Format.formatter -> 'a t -> unit
-
 val always_true : _ t
-
 val always_false : _ t
-
 val numeric : 'w Integer.t -> 'w Comparison.t -> 'w t
-
 val float : float Comparison.t -> float t
-
 val str_unicode : [ `BE | `LE ] -> string Comparison.t -> string t
-
 val string : string Comparison.t -> string t
-
 val length : int Comparison.t -> string t
-
 val regex : Re.t Comparison.t -> Re.t t
-
 val process : ('test, 'v) Ty.t -> 'test t -> 'v -> 'v option
-
 val date : Ptime.Span.t Comparison.t -> Ptime.t t

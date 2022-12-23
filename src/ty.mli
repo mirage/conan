@@ -1,9 +1,6 @@
 type default = Default
-
 type clear = Clear
-
 type unsigned = { unsigned : bool }
-
 type endian = [ `BE | `LE | `ME | `NE ]
 
 type ('test, 'v) t = private
@@ -47,15 +44,10 @@ type ('test, 'v) t = private
       -> (Ptime.t, string) t
 
 val serialize : Format.formatter -> ('test, 'v) t -> unit
-
 val pp : Format.formatter -> ('test, 'v) t -> unit
-
 val pp_of_result : ('test, 'v) t -> Format.formatter -> 'v -> unit
-
 val default : (default, default) t
-
 val offset : (int64, int64) t
-
 val clear : (clear, clear) t
 
 val regex :
@@ -79,9 +71,7 @@ val search :
   (string, string) t
 
 val with_range : int64 -> (string, string) t -> (string, string) t
-
 val with_pattern : string -> (string, string) t -> (string, string) t
-
 val str_unicode : [ `BE | `LE ] -> (string, string) t
 
 val numeric :

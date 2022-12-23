@@ -33,7 +33,6 @@ let pp_error ppf = function
   | `Not_found -> Format.fprintf ppf "Not found"
 
 let mime = ref false
-
 let filename = ref None
 
 let anonymous_argument v =
@@ -51,7 +50,6 @@ let spec =
   ]
 
 let exit_success = 0
-
 let exit_failure = 1
 
 let () =

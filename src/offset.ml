@@ -1,5 +1,4 @@
 let ( <.> ) f g x = f (g x)
-
 let ok x = Ok x
 
 type t =

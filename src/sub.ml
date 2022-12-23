@@ -9,7 +9,6 @@ let v ?(start = 0) ?stop s =
   { start; stop; s }
 
 let empty = { start = 0; stop = 0; s = "" }
-
 let length { start; stop; _ } = stop - start
 
 let head ?(rev = false) { s; start; stop } =

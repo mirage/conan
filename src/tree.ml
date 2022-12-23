@@ -1,9 +1,6 @@
 let () = Printexc.record_backtrace true
-
 let ( <.> ) f g x = f (g x)
-
 let invalid_arg fmt = Format.kasprintf invalid_arg fmt
-
 let pf = Format.fprintf
 
 type 'a fmt = { fmt : 'r. unit -> ('a -> 'r, 'r) Fmt.fmt; str : Parse.message }
@@ -157,9 +154,7 @@ let offset = function
   | `Ind ind -> indirect_0 ind
 
 type _k = Ty : ('test, 'v) Ty.t -> _k
-
 type _t = Test : 'test Test.t -> _t
-
 type _f = Format : 'v fmt -> _f
 
 let calculation :
@@ -601,14 +596,9 @@ module Unsafe = struct
         { fmt = (fun () -> format_of_ty ty message); str = message } )
 
   let name ~offset name = Name (offset, name)
-
   let use ~offset ~invert name = Use { offset; invert; name }
-
   let mime str = MIME str
-
   let elt ?filename ?line operation = { operation; filename; line }
-
   let node lst = Node lst
-
   let leaf = Done
 end

@@ -10,7 +10,6 @@ struct
   type t
 
   external prj : ('a, t) io -> 'a S.t = "%identity"
-
   external inj : 'a S.t -> ('a, t) io = "%identity"
 end
 
@@ -23,9 +22,7 @@ let unix =
   { bind = (fun x f -> f (prj x)); return = (fun x -> inj x) }
 
 external get_uint16 : string -> int -> int = "%caml_string_get16"
-
 external get_uint32 : string -> int -> int32 = "%caml_string_get32"
-
 external get_uint64 : string -> int -> int64 = "%caml_string_get64"
 
 module File = struct
