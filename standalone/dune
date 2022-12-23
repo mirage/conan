@@ -14,4 +14,4 @@
   %{bin:conan.serialize}
   (source_tree ../database))
  (action
-  (run %{ocaml} %{gen} ../database -o .)))
+  (run %{ocaml} -I +unix %{gen} ../database -o .)))
