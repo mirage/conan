@@ -17,10 +17,10 @@ depends: [
   "conan-unix"     {= version}
   "dune"           {>= "2.9.0"}
   "dune-site"
-  "alcotest"       {with-test}
+  "alcotest"       {>= "0.8.1" & with-test}
   "crowbar"        {with-test}
   "fmt"            {with-test}
-  "rresult"        {with-test}
+  "rresult"        {>= "0.6" & with-test}
   "mirage"              {with-test}
   "mirage-unix"         {with-test}
   "mirage-bootvar-unix" {with-test}

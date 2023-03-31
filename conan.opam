@@ -16,10 +16,10 @@ depends: [
   "dune"                {>= "2.9.0"}
   "uutf"
   "ptime"
-  "alcotest"            {with-test}
+  "alcotest"            {>= "0.8.1" & with-test}
   "crowbar"             {>= "0.2" & with-test}
   "fmt"                 {with-test}
-  "rresult"             {with-test}
+  "rresult"             {>= "0.6" & with-test}
   "mirage"              {with-test}
   "mirage-unix"         {with-test}
   "mirage-bootvar-unix" {with-test}
