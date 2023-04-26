@@ -5,8 +5,12 @@ let test_parser filename =
   let open Conan in
   let ic = open_in ("../database/" ^ filename) in
   match Parse.parse_in_channel ic with
-  | Ok _ -> Alcotest.(check pass) "parser" () ()
-  | Error err -> Alcotest.failf "%a" Parse.pp_error err
+  | Ok _ ->
+      close_in ic;
+      Alcotest.(check pass) "parser" () ()
+  | Error err ->
+      close_in ic;
+      Alcotest.failf "%a" Parse.pp_error err
 
 let test_tree filename =
   Alcotest.test_case filename `Quick @@ fun () ->
@@ -21,8 +25,11 @@ let test_tree filename =
             (succ i, Tree.append acc line))
           (1, Tree.empty) lst
       in
+      close_in ic;
       Alcotest.(check pass) "tree" () ()
-  | Error err -> Alcotest.failf "%a" Parse.pp_error err
+  | Error err ->
+      close_in ic;
+      Alcotest.failf "%a" Parse.pp_error err
 
 let database =
   [
