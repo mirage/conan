@@ -25,7 +25,7 @@ conflicts: ["ocaml-option-flambda"]
 build: [
   ["dune" "subst"] {dev}
   ["dune" "build" "-p" name "-j" jobs]
-  ["dune" "install" "--create-install-files" name]
+  ["dune" "install" "-p" name "--create-install-files" name]
   ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
 dev-repo: "git+https://github.com/mirage/conan.git"
