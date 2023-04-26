@@ -457,6 +457,8 @@ type error =
   | `Unsupported_type
   | `Invalid_use_command ]
 
+let neg f x = not (f x)
+
 let parse_line line : (line, [> error ]) result =
   match string_head line with
   | None | Some '#' -> Ok `Comment
@@ -476,8 +478,10 @@ let parse_line line : (line, [> error ]) result =
           let ty, s = span ~sat:(not <.> is_wsp) s in
           let s = drop ~sat:is_wsp s in
           match to_string ty with
-          | "name" -> Ok (`Name (offset, to_string s))
-          | "guid" -> Ok (`Guid (offset, to_string s))
+          | "name" ->
+              Ok (`Name (offset, to_string (span ~sat:(neg is_wsp) s |> fst)))
+          | "guid" ->
+              Ok (`Guid (offset, to_string (span ~sat:(neg is_wsp) s |> fst)))
           | "use" -> parse_use offset (trim ~drop:is_wsp s)
           | _ ->
               parse_type ty >>= fun ty ->
