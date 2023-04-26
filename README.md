@@ -225,7 +225,7 @@ even:
 The `libmagic` DSL implements many things but as we said, a standard of it does
 not exist. We mostly tried to do a reverse engineering on it to implement
 operations. Some of them are not implemented - due to the lack of definitions
-or just because we did find them into the `file`'s database. Some others are
+or just because we did not find them into the `file`'s database. Some others are
 explicitely not implemented because we judge them as a hack instead of an
 _homogene_ feature.
 
@@ -252,24 +252,16 @@ reasons, it's hard to prove/and say that we have the same behavior than `file`.
 We try to be close to what it does, but in some edge cases, we can not ensure
 that we will produce the same result as `file`.
 
+Also, we did not discovered everything from the given database. Even if we can
+parse and generate a decision tree from the database, some specific execution
+paths can lead to an unexpected failure. We are prompted to fix them step by
+step of course. Feel free to test and write an issue!
+
 ## MirageOS support
 
 The other goal of `conan` is to be able to integrate the database into an
 unikernel and to give an opportunity for an application (such as a web server)
 to recognize MIME types of files.
-
-### Database
-
-`conan` is able to parse a database and serialize it as a full OCaml value. The
-distribution provides 2 databases:
-- the `file`'s database
-- the previous database without extra paths which does not tag the MIME type
-
-The second is lighter than the first and should be used only to get the MIME
-type. Indeed, any information such as the size of the image or the bitrate of
-the sound are deleted.
-
-For instance, an unikernel for Solo5 with the ligher database is around 6 MB.
 
 ### _syscalls_
 
@@ -277,3 +269,35 @@ As any MirageOS projects, `conan` abstracts required _syscalls_ to introspect
 a file. In this way, `conan.string` exists and it is able to recognize the MIME
 type of a given `string` (instead of a file). `lwt` support exists too which
 manipulate a _stream_.
+
+## Database
+
+`conan` is able to parse a database and serialize it as a full OCaml value. The
+distribution provides 2 databases:
+- the `file`'s database
+- the previous database without extra paths which don't not tag the MIME type
+
+The second is lighter than the first and should be used only to get the MIME
+type. Indeed, any information such as the size of the image or the bitrate of
+the sound are deleted.
+
+For instance, an unikernel for Solo5 with the ligher database is around 6 MB.
+
+You can also build your own special database. If you know that you want to
+recognize only few objects, you can merge `tree` values for these objects and
+make a smaller database:
+
+```ocaml
+#require "conan-unix" ;;
+#require "conan-database" ;;
+
+let tree0 = Conan_compress.tree
+let tree1 = Conan_ocaml.tree
+let tree2 = Conan_audio.tree
+
+let tree = List.fold_left Conan.Tree.merge Conan.tree.empty
+  [ tree0; tree1; tree2 ]
+
+let recognize_ocaml_or_archive_or_audio filename =
+  Conan_unix.run_with_tree tree filename
+```

@@ -5,9 +5,9 @@
     used into a MirageOS example.
 
     So [Conan_string] does not have an access to a {i database}. The user must
-    rebuild a {!Conan.Tree.t} by himself via {!tree_of_string} for example.
-    Then, from this [tree], the user is able to recognize a {i payload} as a
-    simple [string] with {!run}:
+    rebuild a {!Conan.Tree.t} by himself/herself via {!tree_of_string} for
+    example. Then, from this [tree], the user is able to recognize a {i payload}
+    as a simple [string] with {!run}:
 
     {[
       let v =

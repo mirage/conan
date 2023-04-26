@@ -12,44 +12,44 @@
     our database (see [conan] or [man magic] to understand the format of the
     database). You must unserialize it to get the {i decision tree} via:
 
-   {[
-     let tree = Conan_unix.tree ~directory:"/home/conan/database"
-   ]}
+    {[
+      let tree = Conan_unix.tree ~directory:"/home/conan/database"
+    ]}
 
-   From this [tree], you can process it with a file accessible via a path.
-   Let's say that, we want to recognize the type of ["/home/conan/file"], we
-   just need:
+    From this [tree], you can process it with a file accessible via a path.
+    Let's say that, we want to recognize the type of ["/home/conan/file"], we
+    just need:
 
-   {[
-     let metadata =
-       match Conan_unix.run_with_tree tree "/home/conan/file" with
-       | Ok m -> m
-       | Error (`Msg err) -> failwith err
-   ]}
+    {[
+      let metadata =
+        match Conan_unix.run_with_tree tree "/home/conan/file" with
+        | Ok m -> m
+        | Error (`Msg err) -> failwith err
+    ]}
 
-   An equivalent of the code above is:
+    An equivalent of the code above is:
 
-   {[
-     let metadata =
-       match Conan_unix.run ~database:"/home/conan/database"
-         "/home/conan/file" with
-       | Ok m -> m
-       | Error (`Msg err) -> failwith err
-   ]}
+    {[
+      let metadata =
+        match Conan_unix.run ~database:"/home/conan/database"
+          "/home/conan/file" with
+        | Ok m -> m
+        | Error (`Msg err) -> failwith err
+    ]}
 
-   Finally, you are able to generate a {i decision tree} from a [string]
-   instead of a directory (as before) with {!tree_of_string}. Then, you are
-   able to {i merge} it with another decision tree via {!Conan.Tree.merge}.
+    Finally, you are able to generate a {i decision tree} from a [string]
+    instead of a directory (as before) with {!tree_of_string}. Then, you are
+    able to {i merge} it with another decision tree via {!Conan.Tree.merge}.
 
-   {2 Metadata.}
+    {2 Metadata.}
 
-   The returned {i metadata} gives you two informations:
-   1) a possible output which describes the given file
-   2) a {b possible} MIME type
+    The returned {i metadata} gives you two informations:
+    1) a possible output which describes the given file
+    2) a {b possible} MIME type
 
-   You can get the output description {!Conan.Metadata.output} and the MIME
-   type via {!Conan.Metadata.mime}. These informations are optional - the
-   decision tree can finish without any information.
+    You can get the output description {!Conan.Metadata.output} and the MIME
+    type via {!Conan.Metadata.mime}. These informations are optional - the
+    decision tree can finish without any information.
 *)
 
 val tree : directory:string -> Conan.Tree.t
