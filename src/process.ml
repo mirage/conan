@@ -28,7 +28,7 @@ let process :
     Metadata.t ->
     Tree.operation ->
     ( ( int64 * Metadata.t,
-        [> `Syscall of error | `Invalid_test | `No_process ] )
+        [> `Syscall of error | `Invalid_date | `Invalid_test | `No_process | `Not_found] )
       result,
       s )
     io =
