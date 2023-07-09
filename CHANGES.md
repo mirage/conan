@@ -1,3 +1,7 @@
+### v0.0.4 2023-07-09 (Paris) France
+
+- Fix the OCaml 5.1 support (@Octachron, #27)
+
 ### v0.0.3 2023-04-24 (Espagne) Madrid
 
 - Fix the OCaml 5 support (@dinosaure, @Leonidas-from-XIV, #21)
