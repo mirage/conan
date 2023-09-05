@@ -408,7 +408,7 @@ and message = [ `No_space of string | `Space of string ]
 type line =
   [ `Comment
   | `Apple of string
-  | `Ext of string
+  | `Ext of string list
   | `Mime of string
   | `Strength of int64 Arithmetic.t
   | `Rule of rule
@@ -469,7 +469,10 @@ let parse_line line : (line, [> error ]) result =
 
       match to_string verb with
       | "!:apple" -> Ok (`Apple (to_string s))
-      | "!:ext" -> Ok (`Ext (to_string s))
+      | "!:ext" ->
+          let exts = cuts ~empty:false ~sep:slash (trim s) in
+          let exts = List.map to_string exts in
+          Ok (`Ext exts)
       | "!:mime" -> Ok (`Mime (to_string s))
       | "!:strength" ->
           parse_strength s >>= fun strength -> Ok (`Strength strength)

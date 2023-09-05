@@ -50,7 +50,7 @@ and message = [ `No_space of string | `Space of string ]
 type line =
   [ `Comment
   | `Apple of string
-  | `Ext of string
+  | `Ext of string list
   | `Mime of string
   | `Strength of int64 Arithmetic.t
   | `Rule of rule

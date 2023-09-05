@@ -14,6 +14,7 @@ type operation = private
   | Name : Offset.t * string -> operation
   | Use : { offset : Offset.t; invert : bool; name : string } -> operation
   | MIME : string -> operation
+  | Extension : string list -> operation
 
 val pp_operation : Format.formatter -> operation -> unit
 val serialize_operation : Format.formatter -> operation -> unit
@@ -36,6 +37,7 @@ module Unsafe : sig
   val name : offset:Offset.t -> string -> operation
   val use : offset:Offset.t -> invert:bool -> string -> operation
   val mime : string -> operation
+  val extension : string list -> operation
   val elt : ?filename:string -> ?line:int -> operation -> elt
   val node : (elt * t) list -> t
   val leaf : t
