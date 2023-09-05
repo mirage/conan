@@ -159,7 +159,7 @@ module Re_serialize = struct
     | Re.View.Stop -> stop ppf ()
     | Re.View.Sem (s, t) -> sem ppf (s, Re.View.view t)
     | Re.View.Sem_greedy (kind, t) -> sem_greedy ppf (kind, Re.View.view t)
-    | Re.View.Group t -> group ppf (Re.View.view t)
+    | Re.View.Group (_, t) -> group ppf (Re.View.view t)
     | Re.View.No_group t -> no_group ppf (Re.View.view t)
     | Re.View.Nest t -> nest ppf (Re.View.view t)
     | Re.View.Case t -> case ppf (Re.View.view t)
