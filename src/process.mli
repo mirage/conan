@@ -19,3 +19,9 @@ val ascending_walk :
 val database : tree:Tree.t -> database
 val append : tree:Tree.t -> database -> database
 val only_mime_paths : database -> Tree.t
+
+val mimes_and_extensions :
+  f:(mime:string -> exts:string list -> 'acc -> 'acc) ->
+  'acc ->
+  database ->
+  'acc

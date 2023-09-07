@@ -12,6 +12,7 @@ type operation =
   | Name : Offset.t * string -> operation
   | Use : { offset : Offset.t; invert : bool; name : string } -> operation
   | MIME : string -> operation
+  | Extension : string list -> operation
 
 type elt = {
   operation : operation;
@@ -33,6 +34,7 @@ let pp_operation ppf = function
   | Use { offset; invert = true; name } ->
       pf ppf "\\^%a\t%s" Offset.pp offset name
   | MIME v -> pf ppf "!:mime %s" v
+  | Extension vs -> pf ppf "!:ext %s" (String.concat "/" vs)
 
 let pp_operation_with_debug ppf t =
   match (t.filename, t.line) with
@@ -80,6 +82,10 @@ let serialize_operation ppf = function
         Serialize.(parens Offset.serialize)
         offset invert name
   | MIME str -> Format.fprintf ppf "@[<2>Conan.Tree.Unsafe.mime@ %S@]" str
+  | Extension vs ->
+      Format.fprintf ppf "@[<2>Conan.Tree.Unsafe.extension@ %a@]"
+        Serialize.(list string)
+        vs
 
 let serialize_elt ppf { operation; filename; line } =
   Format.fprintf ppf
@@ -526,6 +532,7 @@ let use : _ -> operation =
   Use { offset; invert; name }
 
 let mime : _ -> operation = fun v -> MIME v
+let ext : _ -> operation = fun v -> Extension v
 
 exception Not_implemented
 
@@ -540,6 +547,7 @@ let operation ~max = function
       let use = use v in
       (level, use)
   | `Mime v -> (max, mime v)
+  | `Ext vs -> (max, ext vs)
   | _ -> raise Not_implemented
 
 let rec left = function
@@ -557,7 +565,7 @@ let empty = Done
 
 let append tree ?filename ?line:n (line : Parse.line) =
   match line with
-  | `Rule _ | `Name _ | `Use _ | `Mime _ ->
+  | `Rule _ | `Name _ | `Use _ | `Mime _ | `Ext _ ->
       let max = depth_left tree in
       let level, operation = operation ~max line in
       let operation = operation_with_debug ?filename ?line:n operation in
@@ -598,6 +606,7 @@ module Unsafe = struct
   let name ~offset name = Name (offset, name)
   let use ~offset ~invert name = Use { offset; invert; name }
   let mime str = MIME str
+  let extension str = Extension str
   let elt ?filename ?line operation = { operation; filename; line }
   let node lst = Node lst
   let leaf = Done

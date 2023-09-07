@@ -32,7 +32,7 @@ let run database output =
     in
     go []
   in
-  let modules = List.sort String.compare modules in
+  let light_modules = List.sort String.compare modules in
   let oc = open_out "dune.inc.gen" in
   let ppf = Format.formatter_of_out_channel oc in
   Format.fprintf ppf
@@ -42,17 +42,40 @@ let run database output =
  (action
   (run conan.serialize --only-mime --name conan_light.ml %s -o %s)))
 
+(rule
+ (targets @[<hov>%a@])
+ (deps %%{bin:conan.map} (source_tree %s))
+ (action
+  (run conan.map --extension-to-mime %s -o %s)))
+
+(rule
+ (targets @[<hov>%a@])
+ (deps %%{bin:conan.map} (source_tree %s))
+ (action
+  (run conan.map --mime-to-extension %s -o %s)))
+
 (library
  (name conan_light)
  (public_name conan-database.light)
  (wrapped false)
  (modules @[<hov>%a@])
  (libraries conan))
+
+(library
+ (name conan_bindings)
+ (public_name conan-database.bindings)
+ (modules @[<hov>%a@]))
 %!|dune}
     (pp_list ~sep:pp_sep pp_filename)
-    modules database database output
+    light_modules database database output
+    (pp_list ~sep:pp_sep pp_filename)
+    [ "extensions.ml" ] database database "extensions.ml"
+    (pp_list ~sep:pp_sep pp_filename)
+    [ "mIMEs.ml" ] database database "mIMEs.ml"
     (pp_list ~sep:pp_sep pp_module)
-    modules;
+    light_modules
+    (pp_list ~sep:pp_sep pp_module)
+    [ "conan_bindings.ml"; "mIMEs.ml"; "extensions.ml" ];
   close_out oc
 
 let database = ref None

@@ -28,7 +28,11 @@ let process :
     Metadata.t ->
     Tree.operation ->
     ( ( int64 * Metadata.t,
-        [> `Syscall of error | `Invalid_date | `Invalid_test | `No_process | `Not_found] )
+        [> `Syscall of error
+        | `Invalid_date
+        | `Invalid_test
+        | `No_process
+        | `Not_found ] )
       result,
       s )
     io =
@@ -37,6 +41,8 @@ let process :
   | Tree.Name _ -> return (Error `No_process)
   | Tree.Use _ -> return (Error `No_process)
   | Tree.MIME v -> return (Ok (abs_offset, Metadata.with_mime v metadata))
+  | Tree.Extension vs ->
+      return (Ok (abs_offset, Metadata.with_extensions vs metadata))
   | Tree.Rule (offset, ty, test, fmt) -> (
       let ( >>= ) = bind in
       let ( >|= ) x f = x >>= fun x -> return (f x) in
@@ -178,14 +184,15 @@ let has_mime_tag (db, tree) =
         if not !has_mime_tag then iter has_mime_tag rest
     | (Tree.Use { name; _ }, tree) :: rest ->
         (if not (Hashtbl.mem visited name) then
-         match Hashtbl.find_opt db name with
-         | Some tree' ->
-             Hashtbl.add visited name ();
-             go has_mime_tag tree'
-         | None -> ());
+           match Hashtbl.find_opt db name with
+           | Some tree' ->
+               Hashtbl.add visited name ();
+               go has_mime_tag tree'
+           | None -> ());
         if not !has_mime_tag then go has_mime_tag tree;
         if not !has_mime_tag then iter has_mime_tag rest
     | (Tree.MIME _, _) :: _rest -> has_mime_tag := true
+    | (Tree.Extension _, _) :: _rest -> ()
     | (Tree.Rule _, tree) :: rest ->
         go has_mime_tag tree;
         if not !has_mime_tag then iter has_mime_tag rest
@@ -219,6 +226,38 @@ let only_mime_paths (db, tree) =
         Tree.Unsafe.node (List.fold_left f [] lst)
   in
   go tree
+
+let mimes_and_extensions ~f acc (db, tree) =
+  let visited = Hashtbl.create 0x100 in
+  let rec go (mime, extension) acc tree =
+    match (mime, extension, tree) with
+    | Some mime, (_ :: _ as exts), Tree.Done -> f ~mime ~exts acc
+    | None, _, Tree.Done | Some _, [], Tree.Done -> acc
+    | _, _, Tree.Node elts -> (
+        let fold (mime, exts, acc) (elt, tree) =
+          match Tree.operation elt with
+          | Tree.MIME mime ->
+              (Some mime, exts, go (Some mime, extension) acc tree)
+          | Tree.Extension exts' ->
+              let exts = List.merge String.compare exts exts' in
+              (mime, exts, go (mime, exts) acc tree)
+          | Tree.Use { name; _ } ->
+              if not (Hashtbl.mem visited name) then
+                match Hashtbl.find_opt db name with
+                | Some tree' ->
+                    Hashtbl.add visited name ();
+                    let acc = go (mime, exts) acc tree' in
+                    (mime, exts, go (mime, exts) acc tree)
+                | None -> (mime, exts, go (mime, exts) acc tree)
+              else (mime, exts, acc)
+          | _ -> (mime, exts, go (mime, extension) acc tree)
+        in
+        let mime, exts, acc = List.fold_left fold (mime, extension, acc) elts in
+        match (mime, exts) with
+        | Some mime, (_ :: _ as exts) -> f ~mime ~exts acc
+        | _ -> acc)
+  in
+  go (None, []) acc tree
 
 let rec ascending_walk ({ bind; return } as scheduler) syscall db fd results
     queue =

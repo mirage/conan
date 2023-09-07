@@ -12,6 +12,13 @@
  (package conan-database)
  (libraries conan))
 
+(executable
+ (name map)
+ (modules map)
+ (public_name conan.map)
+ (package conan-database)
+ (libraries fmt conan))
+
 (generate_sites_module
  (module database)
  (sites conan-cli))

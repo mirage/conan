@@ -1,15 +1,41 @@
-type t = { output : string option; mime : string option }
+type t = {
+  output : string option;
+  mime : string option;
+  extensions : string list;
+}
 
 let pf = Format.fprintf
 
 let pp ppf t =
   let pp_option pp_val ppf = function Some v -> pp_val ppf v | None -> () in
+  let pp_list pp_val ppf lst =
+    let rec go = function
+      | [] -> ()
+      | [ x ] -> pp_val ppf x
+      | x :: r ->
+          Format.fprintf ppf "%a;@ " pp_val x;
+          go r
+    in
+    Format.pp_open_box ppf 1;
+    Format.fprintf ppf "[";
+    go lst;
+    Format.fprintf ppf "]";
+    Format.pp_close_box ppf ()
+  in
   let pp_string ppf v = pf ppf "%s" v in
-  pf ppf "{ @[<hov>output= %S;@ mime= %a;@] }"
+  pf ppf "{ @[<hov>output= %S;@ mime= %a; extensions= %a;@] }"
     (Option.value ~default:"" t.output)
-    (pp_option pp_string) t.mime
+    (pp_option pp_string) t.mime (pp_list pp_string) t.extensions
 
 let with_mime mime t = { t with mime = Some mime }
+
+let with_extensions exts t =
+  let extensions =
+    List.fold_left
+      (fun acc v -> if List.mem v acc then acc else v :: acc)
+      t.extensions exts
+  in
+  { t with extensions }
 
 let with_output output t =
   if output <> "" then
@@ -24,9 +50,10 @@ let with_output output t =
   else t
 
 let output { output; _ } = output
-let clear { mime; _ } = { output = None; mime }
+let clear { mime; extensions; _ } = { output = None; mime; extensions }
 let mime { mime; _ } = mime
-let empty = { output = None; mime = None }
+let extensions { extensions; _ } = extensions
+let empty = { output = None; mime = None; extensions = [] }
 
 let concat a0 a1 =
   let output =
@@ -43,4 +70,6 @@ let concat a0 a1 =
     | Some v, Some _ -> Some v
     | None, None -> None
   in
-  { output; mime }
+  let extensions = List.merge String.compare a0.extensions a1.extensions in
+  let extensions = List.sort_uniq String.compare extensions in
+  { output; mime; extensions }
