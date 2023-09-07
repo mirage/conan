@@ -115,6 +115,20 @@
  (action
   (run conan.serialize --only-mime --name conan_light.ml ../database -o .)))
 
+(rule
+ (targets 
+extensions.ml)
+ (deps %{bin:conan.map} (source_tree ../database))
+ (action
+  (run conan.map --extension-to-mime ../database -o extensions.ml)))
+
+(rule
+ (targets 
+mIMEs.ml)
+ (deps %{bin:conan.map} (source_tree ../database))
+ (action
+  (run conan.map --mime-to-extension ../database -o mIMEs.ml)))
+
 (library
  (name conan_light)
  (public_name conan-database.light)
@@ -180,3 +194,9 @@ conan_wireless conan_wordprocessors conan_wsdl conan_x68000 conan_xdelta
 conan_xenix conan_xilinx conan_xo65 conan_xwindows conan_yara conan_zfs
 conan_zilog conan_zip conan_zyxel)
  (libraries conan))
+
+(library
+ (name conan_bindings)
+ (public_name conan-database.bindings)
+ (modules 
+conan_bindings mIMEs extensions))

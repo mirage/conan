@@ -2,7 +2,9 @@ module Map = Map.Make (String)
 
 let ( / ) = Filename.concat
 let mime_to_extension = ref true
+let extension_to_mime = ref false
 let database = ref None
+let output = ref None
 
 let add ~mime ~exts m =
   if !mime_to_extension then
@@ -30,13 +32,17 @@ let aggregate database acc filename =
         (Conan.Process.database ~tree)
   | Error _err -> acc
 
-let run database =
+let run database ppf =
   let files = Sys.readdir database in
   let files = Array.to_list files in
   let map = List.fold_left (aggregate database) Map.empty files in
-  Fmt.pr "%a\n%!"
-    Fmt.(
-      Dump.iter_bindings Map.iter (const string "map") string (Dump.list string))
+  Format.fprintf ppf "module Map = Map.Make (String)\n%!";
+  Format.fprintf ppf "let map = Map.empty\n%!";
+  Map.iter
+    (fun k vs ->
+      Format.fprintf ppf "@[<2>let map = Map.add %S %a map@]\n%!" k
+        Conan.Serialize.(list string)
+        vs)
     map
 
 let anonymous_argument v =
@@ -47,8 +53,18 @@ let usage =
 
 let spec =
   [
+    ("-o", Arg.String (fun str -> output := Some str), "The output filename.");
     ( "--mime-to-extension",
-      Arg.Set mime_to_extension,
+      Arg.Unit
+        (fun () ->
+          mime_to_extension := true;
+          extension_to_mime := false),
+      "Generate a map from MIME types to extensions." );
+    ( "--extension-to-mime",
+      Arg.Unit
+        (fun () ->
+          extension_to_mime := true;
+          mime_to_extension := false),
       "Generate a map from extensions to MIME types." );
   ]
 
@@ -62,5 +78,16 @@ let () =
       Format.eprintf "%s" usage;
       exit exit_failure
   | Some database ->
-      run database;
+      let output, close =
+        match !output with
+        | None -> (Format.std_formatter, ignore)
+        | Some output when not (Sys.file_exists output) ->
+            let oc = open_out output in
+            (Format.formatter_of_out_channel oc, fun () -> close_out oc)
+        | Some output ->
+            Format.eprintf "%s already exists\n%!" output;
+            exit exit_failure
+      in
+      run database output;
+      close ();
       exit exit_success
