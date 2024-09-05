@@ -74,7 +74,7 @@ module Re_serialize = struct
     let len = ref 0 in
     let lst = ref [] in
     Re__Cset.iter cset ~f:(fun chr _chr' ->
-        lst := chr :: !lst;
+        lst := Re__Cset.to_int chr :: !lst;
         incr len);
     let res = Bytes.create !len in
     List.iteri
