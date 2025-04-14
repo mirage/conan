@@ -1,3 +1,7 @@
+### v0.0.6 2024-04-08 (Paris) France
+
+- Fix for `re.1.12.0` (@hannesm, #34)
+
 ### v0.0.5 2023-09-11 (Paris) France
 
 - Update the distribution with re.1.11.0 (@dinosaure, #29)
