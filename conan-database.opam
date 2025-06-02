@@ -4,9 +4,9 @@ synopsis: "A database of decision trees to recognize MIME type"
 maintainer: "Romain Calascibetta <romain.calascibetta@gmail.com>"
 authors: "Romain Calascibetta <romain.calascibetta@gmail.com>"
 license: "BSD-2-Clause"
-homepage: "https://github.com/dinosaure/conan"
-doc: "https://dinosaure.github.io/conan/"
-bug-reports: "https://github.com/dinosaure/conan/issues"
+homepage: "https://github.com/mirage/conan"
+doc: "https://mirage.github.io/conan/"
+bug-reports: "https://github.com/mirage/conan/issues"
 depends: [
   "dune"       {>= "2.9.0"}
   "conan"      {= version}
@@ -22,4 +22,5 @@ build: [
   ["dune" "install" "-p" name "--create-install-files" name]
   ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
-dev-repo: "git+https://github.com/dinosaure/conan.git"
+dev-repo: "git+https://github.com/mirage/conan.git"
+x-maintenance-intent: [ "(latest)" ]
