@@ -23,3 +23,4 @@ build: [
   ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
 dev-repo: "git+https://github.com/dinosaure/conan.git"
+x-maintenance-intent: [ "(latest)" ]

@@ -28,3 +28,4 @@ build: [
   ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
 dev-repo: "git+https://github.com/mirage/conan.git"
+x-maintenance-intent: [ "(latest)" ]
