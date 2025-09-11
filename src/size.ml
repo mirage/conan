@@ -90,8 +90,7 @@ let invert { bind; return } syscall =
   let read_int64_ne fd = syscall.read_int64_ne fd >|= swap64 in
   { syscall with read_int16_ne; read_int32_ne; read_int64_ne }
 
-let read :
-    type s fd error.
+let read : type s fd error.
     s scheduler ->
     (fd, error, s) syscall ->
     fd ->

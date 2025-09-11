@@ -3,8 +3,8 @@ let reword_error f = function Ok _ as v -> v | Error err -> Error (f err)
 
 open Sigs
 
-let process_fmt :
-    type test v. Metadata.t -> (test, v) Ty.t -> v Tree.fmt -> v -> Metadata.t =
+let process_fmt : type test v.
+    Metadata.t -> (test, v) Ty.t -> v Tree.fmt -> v -> Metadata.t =
  fun m t tree_fmt v ->
   match t with
   | Ty.Clear -> Metadata.clear m
@@ -19,8 +19,7 @@ let process_fmt :
         (Option.value ~default:"" (Metadata.output m))
         v
 
-let process :
-    type s fd error.
+let process : type s fd error.
     s scheduler ->
     (fd, error, s) syscall ->
     fd ->
