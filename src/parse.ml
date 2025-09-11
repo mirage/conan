@@ -330,13 +330,13 @@ let parse_test s =
         if is_empty empty || is_modifier empty then
           Ok
             (`Numeric
-              (Comparison.of_string ~with_val:(v, to_string s) comparison))
+               (Comparison.of_string ~with_val:(v, to_string s) comparison))
         else parse_string s
     | Error (`Invalid_number _ | `Empty) ->
         if is_empty s then
           Ok
             (`Numeric
-              (Comparison.of_string ~with_val:(Number.int64 0L, "") comparison))
+               (Comparison.of_string ~with_val:(Number.int64 0L, "") comparison))
         else parse_string s
 
 let parse_message s =

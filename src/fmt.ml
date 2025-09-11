@@ -71,8 +71,7 @@ module Hmap = struct
   let empty = Map.empty
   let add k v t = Map.add (V k) (B (k, v)) t
 
-  let find :
-      type a.
+  let find : type a.
       a key ->
       t ->
       (?padding:[ `Left of int | `Right of int | `Zero of int ] ->
@@ -186,8 +185,8 @@ type w = Ty : ('ty, 'v) ty -> w
 let pf = Format.fprintf
 let strf = Format.asprintf
 
-let padding_and_precision_to_padding :
-    type u v w. (u, v) padding -> (v, w) precision -> (u, w) padding =
+let padding_and_precision_to_padding : type u v w.
+    (u, v) padding -> (v, w) precision -> (u, w) padding =
  fun padding precision ->
   match (padding, precision) with
   | Nop, Nop -> Nop
@@ -205,16 +204,16 @@ let pp_ty : type v r. Format.formatter -> (v, r) ty -> unit =
  fun ppf ty ->
   let rec flat : type v r. _ list -> (v, r) ty -> _ list =
    fun acc -> function
-    | End -> List.rev acc
-    | Char ty -> flat (`Char :: acc) ty
-    | Int ty -> flat (`Int :: acc) ty
-    | Int32 ty -> flat (`Int32 :: acc) ty
-    | Int64 ty -> flat (`Int64 :: acc) ty
-    | Float ty -> flat (`Float :: acc) ty
-    | String ty -> flat (`String :: acc) ty
-    | Param ty -> flat (`Param :: acc) ty
-    | Any (_, ty) -> flat (`Any :: acc) ty
-    | Ignore ty -> flat (`Ignore :: acc) ty
+     | End -> List.rev acc
+     | Char ty -> flat (`Char :: acc) ty
+     | Int ty -> flat (`Int :: acc) ty
+     | Int32 ty -> flat (`Int32 :: acc) ty
+     | Int64 ty -> flat (`Int64 :: acc) ty
+     | Float ty -> flat (`Float :: acc) ty
+     | String ty -> flat (`String :: acc) ty
+     | Param ty -> flat (`Param :: acc) ty
+     | Any (_, ty) -> flat (`Any :: acc) ty
+     | Ignore ty -> flat (`Ignore :: acc) ty
   in
   let pp_ty ppf = function
     | `Char -> pf ppf "char"
@@ -303,8 +302,8 @@ let rec ty_of_fmt : type v r. (v, r) fmt -> (v, r) ty = function
 exception Invalid_type
 exception Invalid_key
 
-let gen_padding :
-    type ty0 v0 ty1 v1. (ty0, v0) padding -> (ty1, v1) ty -> (ty1, v1) pw =
+let gen_padding : type ty0 v0 ty1 v1.
+    (ty0, v0) padding -> (ty1, v1) ty -> (ty1, v1) pw =
  fun pad ty ->
   match (pad, ty) with
   | Nop, _ -> P (Nop, ty)
@@ -312,8 +311,7 @@ let gen_padding :
   | Arg padding, Int ty -> P (Arg padding, ty)
   | _ -> raise Invalid_type
 
-let gen_padding_precision :
-    type u v w ty0 v0.
+let gen_padding_precision : type u v w ty0 v0.
     (u, v) padding -> (v, w) precision -> (ty0, v0) ty -> (ty0, v0) ppw =
  fun padding precision ty ->
   match (precision, gen_padding padding ty) with
@@ -518,8 +516,7 @@ let make_pdebb : type a b. (a, b) padding -> (_, _) fmt -> (_, _) pdebb =
   | Lit (k, v) -> PdEbb (Lit (k, v), fmt)
   | Arg v -> PdEbb (Arg v, fmt)
 
-let make_pdprebb :
-    type a b c d.
+let make_pdprebb : type a b c d.
     (a, b) padding -> (c, d) precision -> (_, _) fmt -> (_, _) pdprebb =
  fun padding precision fmt ->
   let (PrEbb (precision, fmt)) = make_prebb precision fmt in
@@ -528,8 +525,8 @@ let make_pdprebb :
   | Lit (k, v) -> PdPrEbb (Lit (k, v), precision, fmt)
   | Arg v -> PdPrEbb (Arg v, precision, fmt)
 
-let rec parse_precision :
-    type x v r. any:x Hmap.key -> bool -> (v, _) padding -> s -> r ebb =
+let rec parse_precision : type x v r.
+    any:x Hmap.key -> bool -> (v, _) padding -> s -> r ebb =
  fun ~any alteration_flag padding s ->
   let open Sub in
   let dot = v "." in
@@ -565,8 +562,7 @@ and parse_padding : type x r. any:x Hmap.key -> s -> r ebb =
       parse_precision ~any alteration_flag (Lit (`Zero, int_of_string pad)) s
   | true, true, _ -> invalid_arg "Invalid padding flags"
 
-and parse_flag :
-    type x a b c d r.
+and parse_flag : type x a b c d r.
     any:x Hmap.key -> bool -> (a, b) padding -> (c, d) precision -> s -> r ebb =
  fun ~any alteration_flag padding precision s ->
   let open Sub in
@@ -677,8 +673,7 @@ let padding = function
   | `Right -> fun x -> `Right x
   | `Zero -> fun x -> `Zero x
 
-let keval_padding :
-    type ty v.
+let keval_padding : type ty v.
     formatter ->
     (ty, v) padding ->
     (formatter -> [ `Left of int | `Right of int | `Zero of int ] option -> v) ->
@@ -693,8 +688,7 @@ let keval_padding :
   | Arg `Right -> fun v -> k ppf (Some (`Right v))
   | Arg `Zero -> fun v -> k ppf (Some (`Zero v))
 
-let keval_precision :
-    type ty v.
+let keval_precision : type ty v.
     formatter -> (ty, v) precision -> (formatter -> int option -> v) -> ty =
  fun ppf precision k ->
   match precision with
@@ -702,8 +696,8 @@ let keval_precision :
   | Lit v -> k ppf (Some v)
   | Arg -> fun v -> k ppf (Some v)
 
-let keval_order :
-    type ty v. Hmap.t -> formatter -> (ty, v) order -> (formatter -> v) -> ty =
+let keval_order : type ty v.
+    Hmap.t -> formatter -> (ty, v) order -> (formatter -> v) -> ty =
  fun pps ppf order k ->
   match order with
   | Ignore -> fun _ -> k ppf
@@ -765,8 +759,8 @@ let keval_order :
       let k ppf padding = keval_precision ppf precision (k padding) in
       keval_padding ppf padding k
 
-let rec keval :
-    type ty v. Hmap.t -> formatter -> (ty, v) fmt -> (formatter -> v) -> ty =
+let rec keval : type ty v.
+    Hmap.t -> formatter -> (ty, v) fmt -> (formatter -> v) -> ty =
  fun pps formatter fmt k ->
   match fmt with
   | [] -> k formatter

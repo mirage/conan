@@ -315,8 +315,7 @@ let with_pattern pattern = function
 let str_unicode endian = Unicode_string endian
 let system_endian = if Sys.big_endian then `BE else `LE
 
-let numeric :
-    type w.
+let numeric : type w.
     ?unsigned:bool ->
     ?endian:endian ->
     w Integer.t ->
@@ -398,8 +397,7 @@ let read_double ({ bind; return } as scheduler) syscall fd endian =
   | Ok v -> return (Ok (Int64.float_of_bits v))
   | Error _ as err -> return err
 
-let process :
-    type s fd error test v.
+let process : type s fd error test v.
     s scheduler ->
     (fd, error, s) syscall ->
     fd ->

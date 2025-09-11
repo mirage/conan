@@ -42,8 +42,7 @@ let rec pp ppf = function
 
 open Sigs
 
-let process :
-    type s fd error.
+let process : type s fd error.
     s scheduler ->
     (fd, error, s) syscall ->
     fd ->
