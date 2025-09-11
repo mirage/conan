@@ -60,9 +60,11 @@ module File = struct
           Ok ())
         else Error `Out_of_bound
 
+  let ( let* ) = Option.bind
+
   let load ~seek t =
     let off = Int64.(mul (div seek 255L) 255L) in
-    let off = Unix.LargeFile.lseek t.fd off Unix.SEEK_SET in
+    let* off = try Some (Unix.LargeFile.lseek t.fd off Unix.SEEK_SET) with _ -> None in
     let len = min (Int64.sub t.max off) 255L in
     let len = Int64.to_int len in
     if off < 0L || len = 0 then None
@@ -123,7 +125,7 @@ module File = struct
       concat ps
     else
       let buf = Bytes.create required in
-      let _ = Unix.LargeFile.lseek t.fd t.seek Unix.SEEK_SET in
+      let* _ = try Some (Unix.LargeFile.lseek t.fd t.seek Unix.SEEK_SET) with _ -> None in
       let _ = Unix.read t.fd buf 0 required in
       Some (0, required, Bytes.unsafe_to_string buf)
 
