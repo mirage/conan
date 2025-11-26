@@ -417,7 +417,7 @@ let process : type s fd error test v.
   | Search { pattern = ""; _ } -> (return <.> ok) ""
   | Search
       {
-        pattern = _;
+        pattern;
         compact_whitespaces = _;
         optional_blank = _;
         lower_case_insensitive = _;
@@ -439,11 +439,12 @@ let process : type s fd error test v.
       match results with
       | [] -> return (Error `Not_found)
       | rel_offset :: _ ->
-          syscall.seek fd (Int64.add abs_offset rel_offset) SET
+          let len_pattern = Int64.of_int (String.length pattern) in
+          syscall.seek fd Int64.(add (add abs_offset rel_offset) len_pattern) SET
           >|= reword_error (fun err -> `Syscall err)
-          >?= fun () ->
-          syscall.read fd (Int64.to_int range)
-          >|= reword_error (fun err -> `Syscall err))
+          (* TODO(dinosaure): we should return the pattern as-is into the document
+             and not the pattern from the database. *)
+          >?= fun () -> return (Ok pattern))
   | Regex { kind; limit; _ } -> (
       match kind with
       | `Byte ->
