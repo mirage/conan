@@ -107,6 +107,11 @@ and string buf = parse
       { add_escaped_uchar lexbuf buf (uchar_for_uchar_escape lexbuf)
       ; string buf lexbuf }
   | '\\' _ { store_lexeme buf lexbuf ; string buf lexbuf }
+  (* XXX(dinosaure): we splitted things with '\t' but the database can contains ["\\\t"] and for such
+     contents, we would like to escape '\t'. If we finish with '\\', that mostly means that we would
+     like to escape the next character and the next character **is** '\t'. It's a bad fix. We probably
+     should be smarter when we split a command with '\t'. *)
+  | '\\' eof { store_string_char lexbuf buf '\t'; Buffer.contents buf }
   | eof { Buffer.contents buf }
   | _ as chr { store_string_char lexbuf buf chr
              ; string buf lexbuf }
