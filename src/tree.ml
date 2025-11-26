@@ -197,6 +197,7 @@ let key_of_ty : type test v. string -> (test, v) Ty.t -> v Fmt.Hmap.Key.key =
   match (ty0, ty1) with
   | Byte _, Int End -> Pps.char_to_int
   | Long _, Int End -> Pps.int32_to_int
+  | Quad _, Int End -> Pps.int64_to_int
   | _ ->
       invalid_arg "Impossible to convert %a to %a on %S" Ty.pp ty0 Fmt.pp_ty ty1
         message

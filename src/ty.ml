@@ -309,7 +309,7 @@ let search ?(compact_whitespaces = false) ?(optional_blank = false)
 let with_range range = function Search v -> Search { v with range } | t -> t
 
 let with_pattern pattern = function
-  | Search v -> Search { v with pattern }
+  | Search v -> Search { v with pattern; find = Kmp.find_one ~pattern }
   | t -> t
 
 let str_unicode endian = Unicode_string endian
@@ -440,7 +440,9 @@ let process : type s fd error test v.
       | [] -> return (Error `Not_found)
       | rel_offset :: _ ->
           let len_pattern = Int64.of_int (String.length pattern) in
-          syscall.seek fd Int64.(add (add abs_offset rel_offset) len_pattern) SET
+          syscall.seek fd
+            Int64.(add (add abs_offset rel_offset) len_pattern)
+            SET
           >|= reword_error (fun err -> `Syscall err)
           (* TODO(dinosaure): we should return the pattern as-is into the document
              and not the pattern from the database. *)

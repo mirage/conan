@@ -123,6 +123,9 @@ let read : type s fd error.
       if Sys.big_endian then syscall.read_int64_ne fd >|= swap64
       else syscall.read_int64_ne fd
   | Bequad ->
-      if Sys.big_endian then syscall.read_int64_ne fd >|= swap64
-      else syscall.read_int64_ne fd
+      if Sys.big_endian then syscall.read_int64_ne fd
+      else syscall.read_int64_ne fd >|= swap64
+  | Beid3 ->
+      if Sys.big_endian then syscall.read_int32_ne fd >|= Int64.of_int32
+      else syscall.read_int32_ne fd >|= swap32 >|= Int64.of_int32
   | s -> invalid_arg "Unsupported size %a" pp s
