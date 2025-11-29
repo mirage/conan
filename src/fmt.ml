@@ -113,6 +113,7 @@ type _ conv =
   | Conv_Cx : int conv
   | Conv_X : int conv
   | Conv_CX : int conv
+  | Conv_g : float conv
 
 type ('ty, 'v) order =
   | Byte :
@@ -330,6 +331,9 @@ let rec gen : type ty0 v0 ty1 v1. (ty0, v0) fmt -> (ty1, v1) ty -> (ty1, v1) tw
       | P (padding, String ty_rest) ->
           let (T (fmt, ty)) = gen fmt_rest ty_rest in
           T (String padding :: fmt, ty)
+      | P (padding, Any (key, ty_rest)) ->
+          let (T (fmt, ty)) = gen fmt_rest ty_rest in
+          T (Atom (padding, Nop, key) :: fmt, ty)
       | _ -> raise Invalid_type)
   | Const (pp, v) :: fmt_rest, ty_rest ->
       let (T (fmt, ty)) = gen fmt_rest ty_rest in
@@ -533,12 +537,12 @@ let rec parse_precision : type x v r.
   if is_prefix ~affix:dot s then
     let precision, s = span ~sat:is_digit (tail s) in
     match to_string precision with
-    | "" -> parse_flag ~any alteration_flag padding Arg s
+    | "" -> parse_flag ~any alteration_flag None padding Arg s
     | precision ->
-        parse_flag ~any alteration_flag padding
+        parse_flag ~any alteration_flag None padding
           (Lit (int_of_string precision))
           s
-  else parse_flag ~any alteration_flag padding Nop s
+  else parse_flag ~any alteration_flag None padding Nop s
 
 and parse_padding : type x r. any:x Hmap.key -> s -> r ebb =
  fun ~any s ->
@@ -563,8 +567,14 @@ and parse_padding : type x r. any:x Hmap.key -> s -> r ebb =
   | true, true, _ -> invalid_arg "Invalid padding flags"
 
 and parse_flag : type x a b c d r.
-    any:x Hmap.key -> bool -> (a, b) padding -> (c, d) precision -> s -> r ebb =
- fun ~any alteration_flag padding precision s ->
+    any:x Hmap.key ->
+    bool ->
+    [ `L | `LL | `_l | `_ll ] option ->
+    (a, b) padding ->
+    (c, d) precision ->
+    s ->
+    r ebb =
+ fun ~any alteration_flag long padding precision s ->
   let open Sub in
   match head s with
   | None -> invalid_arg "Invalid format: %S" (to_string s)
@@ -580,24 +590,68 @@ and parse_flag : type x a b c d r.
         make_pdprebb padding precision fmt
       in
       Ebb (Byte (Conv_c, padding, precision) :: fmt)
-  | Some 'd' ->
+  | Some ('d' | 'i') -> (
       let (Ebb fmt) = go ~any (tail s) in
-      let (PdPrEbb (padding, precision, fmt)) =
-        make_pdprebb padding precision fmt
-      in
-      Ebb (Short (false, Conv_d, padding, precision) :: fmt)
-  | Some 'x' ->
+      match long with
+      | None ->
+          let (PdPrEbb (padding, precision, fmt)) =
+            make_pdprebb padding precision fmt
+          in
+          Ebb (Short (false, Conv_d, padding, precision) :: fmt)
+      | Some (`L | `_l) ->
+          let (PdPrEbb (padding, precision, fmt)) =
+            make_pdprebb padding precision fmt
+          in
+          Ebb (Long (false, Conv_d, padding, precision) :: fmt)
+      | Some (`LL | `_ll) ->
+          let (PdPrEbb (padding, precision, fmt)) =
+            make_pdprebb padding precision fmt
+          in
+          Ebb (Quad (false, Conv_d, padding, precision) :: fmt))
+  | Some 'l' -> (
+      match long with
+      | None ->
+          parse_flag ~any alteration_flag (Some `_l) padding precision (tail s)
+      | Some `_l ->
+          parse_flag ~any alteration_flag (Some `_ll) padding precision (tail s)
+      | Some (`L | `LL) -> invalid_arg "Wrong mix of l|L"
+      | _ -> invalid_arg "Too much of l")
+  | Some 'x' -> (
       let (Ebb fmt) = go ~any (tail s) in
-      let (PdPrEbb (padding, precision, fmt)) =
-        make_pdprebb padding precision fmt
-      in
-      Ebb
-        (Short
-           ( true,
-             (if alteration_flag then Conv_Cx else Conv_x),
-             padding,
-             precision )
-        :: fmt)
+      match long with
+      | None ->
+          let (PdPrEbb (padding, precision, fmt)) =
+            make_pdprebb padding precision fmt
+          in
+          Ebb
+            (Short
+               ( true,
+                 (if alteration_flag then Conv_Cx else Conv_x),
+                 padding,
+                 precision )
+            :: fmt)
+      | Some (`L | `_l) ->
+          let (PdPrEbb (padding, precision, fmt)) =
+            make_pdprebb padding precision fmt
+          in
+          Ebb
+            (Long
+               ( true,
+                 (if alteration_flag then Conv_Cx else Conv_x),
+                 padding,
+                 precision )
+            :: fmt)
+      | Some (`LL | `_ll) ->
+          let (PdPrEbb (padding, precision, fmt)) =
+            make_pdprebb padding precision fmt
+          in
+          Ebb
+            (Quad
+               ( true,
+                 (if alteration_flag then Conv_Cx else Conv_x),
+                 padding,
+                 precision )
+            :: fmt))
   | Some 'X' ->
       let (Ebb fmt) = go ~any (tail s) in
       let (PdPrEbb (padding, precision, fmt)) =
@@ -629,6 +683,12 @@ and parse_flag : type x a b c d r.
         make_pdprebb padding precision fmt
       in
       Ebb (Short (true, Conv_d, padding, precision) :: fmt)
+  | Some ('f' | 'g') ->
+      let (Ebb fmt) = go ~any (tail s) in
+      let (PdPrEbb (padding, precision, fmt)) =
+        make_pdprebb padding precision fmt
+      in
+      Ebb (Float (padding, precision) :: fmt)
   | Some chr -> invalid_arg "Invalid formatter %c" chr
 
 and go : type x r. any:x Hmap.key -> s -> r ebb =

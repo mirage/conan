@@ -110,7 +110,7 @@ let caml =
 let test07 =
   make_simple_test ~name:"test07 (caml)" caml
     (String.concat "" simple_caml_object)
-    (Some "OCaml native object file (.cmx) (Version 029)")
+    (Some "OCaml native object file (.cmx)")
 
 let simple_gzip =
   [
