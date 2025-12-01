@@ -15,7 +15,7 @@ depends: [
   "fmt"        {with-test}
   "rresult"    {>= "0.6" & with-test}
 ]
-conflicts: ["ocaml-option-flambda"]
+conflicts: [("ocaml-option-flambda" && "ocaml" < "5.0.0")]
 build: [
   ["dune" "subst"] {dev}
   ["dune" "build" "-p" name "-j" jobs]
