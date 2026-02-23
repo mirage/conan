@@ -14,7 +14,7 @@ depends: [
   "ocaml"    {>= "4.08.0"}
   "dune"     {>= "2.9.0"}
   "lwt"
-  "bigstringaf" {>= "0.2.0"}
+  "bstr"     {>= "0.0.4"}
   "conan"    {= version}
   "alcotest" {>= "0.8.1" & with-test}
   "crowbar"  {with-test}
