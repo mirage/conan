@@ -32,23 +32,22 @@ external get_uint64 : string -> int -> int64 = "%caml_string_get64"
 
 module Stream = struct
   type t = {
-    mutable buffer : Bigstringaf.t;
+    mutable buffer : Bstr.t;
     mutable save : int;
     mutable seek : int;
     stream : unit -> string option Lwt.t;
   }
 
   let openfile stream =
-    { buffer = Bigstringaf.create 0x1000; save = 0; seek = 0; stream }
+    { buffer = Bstr.create 0x1000; save = 0; seek = 0; stream }
 
   let resize t more =
-    let new_len = ref t.save in
-    while t.save + more > !new_len do
+    let new_len = ref (Int.max 1 t.save) in
+    while t.save + more >= !new_len do
       new_len := 2 * !new_len
     done;
-    (* TODO(dinosaure): overflow! *)
-    let buffer = Bigstringaf.create !new_len in
-    Bigstringaf.blit t.buffer ~src_off:0 buffer ~dst_off:0 ~len:t.save;
+    let buffer = Bstr.create !new_len in
+    Bstr.blit t.buffer ~src_off:0 buffer ~dst_off:0 ~len:t.save;
     t.buffer <- buffer
 
   let _max_int = Int64.of_int max_int
@@ -63,9 +62,9 @@ module Stream = struct
       t.stream () >>= function
       | None -> Lwt.return_error `Out_of_bound
       | Some str ->
-          let max = Bigstringaf.length t.buffer - t.save in
+          let max = Bstr.length t.buffer - t.save in
           if String.length str > max then resize t (String.length str - max);
-          Bigstringaf.blit_from_string str ~src_off:0 t.buffer ~dst_off:t.save
+          Bstr.blit_from_string str ~src_off:0 t.buffer ~dst_off:t.save
             ~len:(String.length str);
           t.save <- t.save + String.length str;
           consume_and_save_to ~abs_offset t
@@ -74,9 +73,9 @@ module Stream = struct
     t.stream () >>= function
     | None -> Lwt.return_unit
     | Some str ->
-        let max = Bigstringaf.length t.buffer - t.save in
+        let max = Bstr.length t.buffer - t.save in
         if String.length str > max then resize t (String.length str - max);
-        Bigstringaf.blit_from_string str ~src_off:0 t.buffer ~dst_off:t.save
+        Bstr.blit_from_string str ~src_off:0 t.buffer ~dst_off:t.save
           ~len:(String.length str);
         t.save <- t.save + String.length str;
         save_all t
@@ -97,17 +96,18 @@ module Stream = struct
           Lwt.return_ok ()
       | Conan.Sigs.END ->
           save_all t >>= fun () ->
-          let abs_offset = t.save + offset in
-          if abs_offset >= 0 && abs_offset < t.save then (
+          let abs_offset = t.save - offset in
+          if abs_offset >= 0 && abs_offset < t.save then begin
             t.seek <- abs_offset;
-            Lwt.return_ok ())
+            Lwt.return_ok ()
+          end
           else Lwt.return_error `Out_of_bound
 
   let read t required =
     consume_and_save_to ~abs_offset:(t.seek + required) t >>= fun _ ->
-    let len = min required (t.save - t.seek) in
+    let len = Int.min required (t.save - t.seek) in
     if len <= 0 then Lwt.return_none
-    else Lwt.return_some (Bigstringaf.substring t.buffer ~off:t.seek ~len)
+    else Lwt.return_some (Bstr.sub_string t.buffer ~off:t.seek ~len)
 
   let read_int8 t =
     read t 1 >>= function
@@ -131,20 +131,19 @@ module Stream = struct
 
   let rec index buf chr pos limit =
     if pos >= limit then raise Not_found;
-    if Bigstringaf.get buf pos = chr then pos
-    else index buf chr (succ pos) limit
+    if Bstr.get buf pos = chr then pos else index buf chr (succ pos) limit
 
   let index str chr ~off ~len = index str chr off (off + len) - off
 
   let line t =
     read t 80 >>= fun _ ->
-    let len = min (t.save - t.seek) 80 in
+    let len = Int.min (t.save - t.seek) 80 in
     let off = t.seek in
     match index t.buffer '\n' ~off ~len with
     | pos ->
-        t.seek <- t.seek + (pos - off);
-        let str = Bigstringaf.substring t.buffer ~off ~len:(off - pos) in
-        Lwt.return_ok (0, off - pos, str)
+        t.seek <- t.seek + pos;
+        let str = Bstr.sub_string t.buffer ~off ~len:(pos + 1) in
+        Lwt.return_ok (0, pos, str)
     | exception Not_found -> Lwt.return_error `Out_of_bound
 
   let read t required =

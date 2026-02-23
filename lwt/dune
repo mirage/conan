@@ -1,4 +1,4 @@
 (library
  (name conan_lwt)
  (public_name conan-lwt)
- (libraries bigstringaf conan lwt))
+ (libraries bstr conan lwt))
