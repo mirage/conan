@@ -35,6 +35,7 @@ let aggregate database acc filename =
 let run database ppf =
   let files = Sys.readdir database in
   let files = Array.to_list files in
+  let files = List.sort String.compare files in
   let map = List.fold_left (aggregate database) Map.empty files in
   Format.fprintf ppf "module Map = Map.Make (String)\n%!";
   Format.fprintf ppf "let map = Map.empty\n%!";

@@ -117,6 +117,7 @@ let simulate only_mime database output filename =
 let run only_mime database output =
   let files = Sys.readdir database in
   let files = Array.to_list files in
+  let files = List.sort String.compare files in
   List.iter (serialize only_mime database output) files;
   let files = List.map (fun file -> ocamlify ("conan_" ^ file)) files in
   let oc = open_out (output / !name) in
@@ -135,6 +136,7 @@ let run only_mime database output =
 let dry_run only_mime database output =
   let files = Sys.readdir database in
   let files = Array.to_list files in
+  let files = List.sort String.compare files in
   let files = List.map (simulate only_mime database output) files in
   let files = List.concat files in
   List.iter (Format.printf "%s\n%!") ((output / !name) :: files)

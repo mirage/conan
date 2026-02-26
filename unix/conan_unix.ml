@@ -194,6 +194,7 @@ let ( / ) = Filename.concat
 let fill_tree database =
   let files = Sys.readdir database in
   let files = Array.to_list files in
+  let files = List.sort String.compare files in
   let rec go tree = function
     | [] -> tree
     | filename :: rest -> (
