@@ -1,3 +1,11 @@
+### v0.0.7 2026-03-02 (Paris) France
+
+- Delete useless dependencies for the mirage support (@dinosaure, #41)
+- Fix our `lseek` usage on `conan.file` (@dinosaure, #40)
+- Improve our search command and our pretty-printer (@dinosaure, #43)
+- Fix infinite loop on our lwt support and use `bstr` instead of `bigstringaf` (@dinosaure, spotted by @zoggy, #44, #45)
+- Fix the reproducibility of our database (@hannesm, #46)
+
 ### v0.0.6 2024-04-08 (Paris) France
 
 - Fix for `re.1.12.0` (@hannesm, #34)
