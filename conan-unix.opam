@@ -13,6 +13,7 @@ bug-reports: "https://github.com/mirage/conan/issues"
 depends: [
   "ocaml"     {>= "4.08.0"}
   "base-unix"
+  "cachet"    {>= "0.0.4"}
   "conan"     {= version}
   "dune"      {>= "2.9.0"}
   "alcotest"  {>= "0.8.1" & with-test}
