@@ -8,6 +8,8 @@ type 'a t =
   | And of 'a
   | Xor of 'a
 
+type operator = [ `Equal | `Different | `Greater | `Lower | `And | `Xor ]
+
 let serialize pp ppf = function
   | Equal v -> Format.fprintf ppf "@[<2>Conan.Comparison.equal_to@ %a@]" pp v
   | Different v ->
@@ -95,3 +97,11 @@ let process_ptime a c =
   let a = Ptime.Span.to_float_s a in
   let c = map ~f:Ptime.Span.to_float_s c in
   process_float a c
+
+let operator = function
+  | Equal _ -> `Equal
+  | Different _ -> `Different
+  | Greater _ -> `Greater
+  | Lower _ -> `Lower
+  | And _ -> `And
+  | Xor _ -> `Xor
