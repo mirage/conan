@@ -1,3 +1,8 @@
+### v0.0.8 2026-08-26 (Paris) France
+
+- Be able to handle `strength` directives and do the right choice when we have multiple branches (@dinosaure, #49)
+- Also, upgrade to `ocamlformat.0.29.0` (@dinosaure, #49)
+
 ### v0.0.7 2026-03-02 (Paris) France
 
 - Delete useless dependencies for the mirage support (@dinosaure, #41)
