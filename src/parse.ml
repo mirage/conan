@@ -221,9 +221,9 @@ let parse_type s =
                   let has_l = exists is_l s in
                   Ok (unsigned, `Regex (Some (has_c, has_s, has_l, 8192L)))
           else Error (`Unexpected_trailer empty))
-  | `String | `Search -> (
+  | (`String | `Search) as origin -> (
       match cut ~sep:slash s with
-      | None -> Ok (unsigned, `Search None)
+      | None -> Ok (unsigned, `Search (origin, None))
       | Some (empty, s) ->
           if is_empty empty then
             match cut ~sep:slash s with
@@ -242,13 +242,13 @@ let parse_type s =
                 let v = if exists is_T flags then `T :: v else v in
                 Integer.parse limit >>= fun (limit, empty) ->
                 if is_empty empty then
-                  Ok (unsigned, `Search (Some (v, Some limit)))
+                  Ok (unsigned, `Search (origin, Some (v, Some limit)))
                 else Error (`Unexpected_trailer empty)
             | None -> (
                 match Integer.parse s with
                 | Ok (limit, empty) ->
                     if is_empty empty then
-                      Ok (unsigned, `Search (Some ([], Some limit)))
+                      Ok (unsigned, `Search (origin, Some ([], Some limit)))
                     else Error (`Unexpected_trailer empty)
                 | Error (`Empty | `Invalid_integer _) ->
                     let v = [] in
@@ -260,7 +260,7 @@ let parse_type s =
                     let v = if exists is_W s then `W :: v else v in
                     let v = if exists is_w s then `w :: v else v in
                     let v = if exists is_T s then `T :: v else v in
-                    Ok (unsigned, `Search (Some (v, None))))
+                    Ok (unsigned, `Search (origin, Some (v, None))))
           else Error (`Unexpected_trailer empty))
   | `Pstring -> (
       match cut ~sep:slash s with
@@ -394,7 +394,8 @@ and kind =
     | `Regex of (bool * bool * bool * int64) option
     | `String16 of [ `BE | `LE ]
     | `String8 of (bool * bool * bool * bool) option
-    | `Search of (search_flag list * int64 option) option ]
+    | `Search of
+      [ `String | `Search ] * (search_flag list * int64 option) option ]
 
 and search_flag = [ `t | `T | `b | `B | `c | `C | `w | `W ]
 

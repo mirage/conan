@@ -290,8 +290,8 @@ let rule : Parse.rule -> operation =
           (Ty.search ~lower_case_insensitive:c ~upper_case_insensitive:_C
              (if b || _B then `Binary else `Text)
              0L ~pattern:"")
-    | _, `Search None | _, `String8 None -> Ty (Ty.search `Text ~pattern:"" 0L)
-    | _, `Search (Some (flags, range)) ->
+    | _, `Search (_, None) | _, `String8 None -> Ty (Ty.search `Text ~pattern:"" 0L)
+    | _, `Search (_, Some (flags, range)) ->
         let range = Option.value ~default:0L range in
         let lower_case_insensitive = List.exists (( = ) `c) flags in
         let upper_case_insensitive = List.exists (( = ) `C) flags in
