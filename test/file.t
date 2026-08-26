@@ -20,3 +20,6 @@ See the note about application/x-matlab-data
   $ echo "<html><h1>Hello World!</h1></html>" > index.html
   $ CONAN=../database/ conan.file --mime index.html
   text/html
+  $ printf '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0//EN">\n<head>\n<script>window.onload = function() { domain(0); };</script>\n</head>\n' > doctype.html
+  $ CONAN=../database/ conan.file --mime doctype.html
+  text/html

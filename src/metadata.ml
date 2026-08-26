@@ -55,6 +55,10 @@ let mime { mime; _ } = mime
 let extensions { extensions; _ } = extensions
 let empty = { output = None; mime = None; extensions = [] }
 
+let is_empty = function
+  | { output = None; mime = None; extensions = [] } -> true
+  | _ -> false
+
 let concat a0 a1 =
   let output =
     match (a0.output, a1.output) with

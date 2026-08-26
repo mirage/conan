@@ -16,9 +16,90 @@ type operation =
 
 type elt = {
   operation : operation;
+  strength : int;
   filename : string option;
   line : int option;
 }
+
+(* XXX(dinosaure): [file(1)] does not concatenate every top-level entries which
+   match the given file. It sorts them by their /strength/ and it keeps the
+   result of the strongest one. The computation below is a transcription of
+   [apprentice_magic_strength()] (see [file/src/apprentice.c]). It permits to
+   solve an issue when a file is recognized as an HTML file or a C file for
+   instance. *)
+
+(* XXX(dinosaure): a strength from regular expression (according to non-magic
+   regexp characters). *)
+let regex_size str =
+  let count = ref 0 in
+  let fn = function
+    | '\000' | '.' | '?' | '*' | '+' | ',' | '{' | '}' | '[' | ']' | '|' | '('
+    | ')' | '\\' ->
+        ()
+    | _ -> incr count
+  in
+  String.iter fn str;
+  if !count = 0 then 1 else !count
+
+let value_length : Parse.test -> int = function
+  | `True -> 0
+  | `String c -> String.length (Comparison.value c)
+  | `Numeric c -> String.length (snd (Comparison.value c))
+
+(* XXX(dinosaure): a strength from a value type. *)
+let type_size = function
+  | `Byte -> 1
+  | `Short -> 2
+  | `Long | `Date | `Ldate | `Float -> 4
+  | `Quad | `Qdate | `Qldate | `Qwdate | `Double -> 8
+
+let strength_of_rule ((_level, _offset), (_unsigned, kind), test, _message) =
+  let mult = 10 in
+  let len = value_length test in
+  let base =
+    match kind with
+    | `Default -> None (* XXX(dinosaure): it must sort last. *)
+    | `Clear | `Indirect _ -> Some (2 * mult)
+    | `Offset -> Some ((2 * mult) + (8 * mult))
+    | `Numeric (_, numeric, _) -> Some ((2 * mult) + (type_size numeric * mult))
+    | `String8 _ | `Search (`String, _) -> Some ((2 * mult) + (len * mult))
+    | `String16 _ -> Some ((2 * mult) + (len * mult / 2))
+    | `Search (`Search, _) ->
+        if len = 0 then Some (2 * mult)
+        else Some ((2 * mult) + (len * Int.max (mult / len) 1))
+    | `Regex _ ->
+        let v =
+          match test with
+          | `String c -> regex_size (Comparison.value c)
+          | _ -> 1
+        in
+        Some ((2 * mult) + (v * max (mult / v) 1))
+  in
+  let relation base = function
+    | `Equal | `Different -> base + mult
+    | `Greater | `Lower -> base + (mult / 2)
+    | `And | `Xor -> base + (mult / 4)
+  in
+  match (base, test) with
+  | None, _ -> 0
+  | Some _, `True -> 0 (* XXX(dinosaure): it matches anything. *)
+  | Some base, `String c -> relation base (Comparison.operator c)
+  | Some base, `Numeric c -> relation base (Comparison.operator c)
+
+(* [!:strength <op> <value>] *)
+let apply_strength arithmetic strength =
+  if strength = 0 then 0
+  else
+    let value = Int64.to_int (Arithmetic.value arithmetic) in
+    let strength =
+      match arithmetic with
+      | Arithmetic.Add _ -> strength + value
+      | Arithmetic.Sub _ -> strength - value
+      | Arithmetic.Mul _ -> strength * value
+      | Arithmetic.Div _ -> if value = 0 then strength else strength / value
+      | _ -> strength
+    in
+    max strength 0
 
 let pp_message ppf = function
   | `No_space str -> pf ppf "\b%s" str
@@ -87,9 +168,11 @@ let serialize_operation ppf = function
         Serialize.(list string)
         vs
 
-let serialize_elt ppf { operation; filename; line } =
+let serialize_elt ppf { operation; strength; filename; line } =
   Format.fprintf ppf
-    "@[<2>Conan.Tree.Unsafe.elt@ ?filename:@[%a@]@ ?line:@[%a@]@ @[%a@]@]"
+    "@[<2>Conan.Tree.Unsafe.elt@ ~strength:%d@ ?filename:@[%a@]@ ?line:@[%a@]@ \
+     @[%a@]@]"
+    strength
     Serialize.(parens (option string))
     filename
     Serialize.(parens (option int))
@@ -290,8 +373,9 @@ let rule : Parse.rule -> operation =
           (Ty.search ~lower_case_insensitive:c ~upper_case_insensitive:_C
              (if b || _B then `Binary else `Text)
              0L ~pattern:"")
-    | _, `Search None | _, `String8 None -> Ty (Ty.search `Text ~pattern:"" 0L)
-    | _, `Search (Some (flags, range)) ->
+    | _, `Search (_, None) | _, `String8 None ->
+        Ty (Ty.search `Text ~pattern:"" 0L)
+    | _, `Search (_, Some (flags, range)) ->
         let range = Option.value ~default:0L range in
         let lower_case_insensitive = List.exists (( = ) `c) flags in
         let upper_case_insensitive = List.exists (( = ) `C) flags in
@@ -559,8 +643,8 @@ let rec depth_left = function
   | Done | Node [] -> 0
   | Node ((_, hd) :: _) -> 1 + depth_left hd
 
-let operation_with_debug ?filename ?line operation =
-  { operation; filename; line }
+let operation_with_debug ?(strength = 0) ?filename ?line operation =
+  { operation; strength; filename; line }
 
 let empty = Done
 
@@ -569,7 +653,14 @@ let append tree ?filename ?line:n (line : Parse.line) =
   | `Rule _ | `Name _ | `Use _ | `Mime _ | `Ext _ ->
       let max = depth_left tree in
       let level, operation = operation ~max line in
-      let operation = operation_with_debug ?filename ?line:n operation in
+      let strength =
+        match line with
+        | `Rule rule when level = 0 -> strength_of_rule rule
+        | _ -> 0
+      in
+      let operation =
+        operation_with_debug ~strength ?filename ?line:n operation
+      in
       if level <= left tree then
         let rec go cur tree =
           if cur = level then
@@ -585,6 +676,15 @@ let append tree ?filename ?line:n (line : Parse.line) =
         in
         go 0 tree
       else tree
+  | `Strength arithmetic ->
+      (* XXX(dinosaure): [!:strength] applies to the last entry which is, by
+         construction, the head of our top-level node. *)
+      begin match tree with
+      | Node ((elt, sub) :: rest) ->
+          let strength = apply_strength arithmetic elt.strength in
+          Node (({ elt with strength }, sub) :: rest)
+      | Node [] | Done -> tree
+      end
   | _ -> tree
 
 let merge a b =
@@ -595,6 +695,7 @@ let merge a b =
   | Node a, Node b -> Node (a @ b)
 
 let operation { operation; _ } = operation
+let strength { strength; _ } = strength
 
 module Unsafe = struct
   let rule ~offset ty test message =
@@ -608,7 +709,10 @@ module Unsafe = struct
   let use ~offset ~invert name = Use { offset; invert; name }
   let mime str = MIME str
   let extension str = Extension str
-  let elt ?filename ?line operation = { operation; filename; line }
+
+  let elt ?(strength = 0) ?filename ?line operation =
+    { operation; strength; filename; line }
+
   let node lst = Node lst
   let leaf = Done
 end

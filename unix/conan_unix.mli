@@ -13,7 +13,7 @@
     database). You must unserialize it to get the {i decision tree} via:
 
     {[
-      let tree = Conan_unix.tree ~directory:"/home/conan/database"
+    let tree = Conan_unix.tree ~directory:"/home/conan/database"
     ]}
 
     From this [tree], you can process it with a file accessible via a path.
@@ -21,21 +21,21 @@
     just need:
 
     {[
-      let metadata =
-        match Conan_unix.run_with_tree tree "/home/conan/file" with
-        | Ok m -> m
-        | Error (`Msg err) -> failwith err
+    let metadata =
+      match Conan_unix.run_with_tree tree "/home/conan/file" with
+      | Ok m -> m
+      | Error (`Msg err) -> failwith err
     ]}
 
     An equivalent of the code above is:
 
     {[
-      let metadata =
-        match
-          Conan_unix.run ~database:"/home/conan/database" "/home/conan/file"
-        with
-        | Ok m -> m
-        | Error (`Msg err) -> failwith err
+    let metadata =
+      match
+        Conan_unix.run ~database:"/home/conan/database" "/home/conan/file"
+      with
+      | Ok m -> m
+      | Error (`Msg err) -> failwith err
     ]}
 
     Finally, you are able to generate a {i decision tree} from a [string]

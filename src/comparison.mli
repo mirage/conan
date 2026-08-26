@@ -1,4 +1,5 @@
 type 'a t
+type operator = [ `Equal | `Different | `Greater | `Lower | `And | `Xor ]
 
 val serialize :
   (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
@@ -8,6 +9,7 @@ val of_string : with_val:'a -> string -> 'a t
 val is : char -> bool
 val map : f:('a -> 'b) -> 'a t -> 'b t
 val value : 'a t -> 'a
+val operator : 'a t -> operator
 val equal_to : 'a -> 'a t
 val different_to : 'a -> 'a t
 val greater_than : 'a -> 'a t

@@ -36,7 +36,8 @@ and kind =
     | `Regex of (bool * bool * bool * int64) option
     | `String16 of [ `BE | `LE ]
     | `String8 of (bool * bool * bool * bool) option
-    | `Search of (search_flag list * int64 option) option ]
+    | `Search of
+      [ `String | `Search ] * (search_flag list * int64 option) option ]
 
 and search_flag = [ `t | `T | `b | `B | `c | `C | `w | `W ]
 

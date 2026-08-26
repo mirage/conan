@@ -303,13 +303,22 @@ let search ?(compact_whitespaces = false) ?(optional_blank = false)
       trim;
       range;
       pattern;
-      find = Kmp.find_one ~pattern;
+      find =
+        Kmp.find_one ~lower_case_insensitive ~upper_case_insensitive
+          ~compact_whitespaces ~optional_blank ~pattern ();
     }
 
 let with_range range = function Search v -> Search { v with range } | t -> t
 
 let with_pattern pattern = function
-  | Search v -> Search { v with pattern; find = Kmp.find_one ~pattern }
+  | Search v ->
+      let find =
+        Kmp.find_one ~lower_case_insensitive:v.lower_case_insensitive
+          ~upper_case_insensitive:v.upper_case_insensitive
+          ~compact_whitespaces:v.compact_whitespaces
+          ~optional_blank:v.optional_blank ~pattern ()
+      in
+      Search { v with pattern; find }
   | t -> t
 
 let str_unicode endian = Unicode_string endian
@@ -435,14 +444,12 @@ let process : type s fd error test v.
       find.Kmp.f scheduler ~get ~ln:range fd
       >|= reword_error (fun err -> `Syscall err)
       >?= fun results ->
-      let results = List.sort Int64.compare results in
+      let fn (a, _) (b, _) = Int64.compare a b in
+      let results = List.sort fn results in
       match results with
       | [] -> return (Error `Not_found)
-      | rel_offset :: _ ->
-          let len_pattern = Int64.of_int (String.length pattern) in
-          syscall.seek fd
-            Int64.(add (add abs_offset rel_offset) len_pattern)
-            SET
+      | (_rel_offset, stop) :: _ ->
+          syscall.seek fd Int64.(add abs_offset stop) SET
           >|= reword_error (fun err -> `Syscall err)
           (* TODO(dinosaure): we should return the pattern as-is into the document
              and not the pattern from the database. *)

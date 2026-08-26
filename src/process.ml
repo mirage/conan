@@ -141,7 +141,32 @@ let descending_walk ({ bind; return } as scheduler) syscall db fd abs_offset
               rest
         | Error _ -> iter ~level results syscall abs_offset candidate1 rest)
   in
-  go ~level:0 syscall abs_offset metadata root
+  let rec best syscall abs_offset candidate = function
+    | [] -> return candidate
+    | (elt, tree) :: rest ->
+        begin match Tree.operation elt with
+        | Tree.Name _ -> best syscall abs_offset candidate rest
+        | operation -> begin
+            iter ~level:0 [] syscall abs_offset Metadata.empty
+              [ (operation, tree) ]
+            >>= fun metadata ->
+            let strength = Tree.strength elt in
+            match candidate with
+            | Some (strength', _) when strength' >= strength ->
+                best syscall abs_offset candidate rest
+            | _ when Metadata.is_empty metadata ->
+                best syscall abs_offset candidate rest
+            | _ -> best syscall abs_offset (Some (strength, metadata)) rest
+          end
+        end
+  in
+  match root with
+  | Tree.Done -> return metadata
+  | Tree.Node lst -> begin
+      best syscall abs_offset None (List.rev lst) >>= function
+      | None -> return metadata
+      | Some (_, metadata') -> return (Metadata.concat metadata metadata')
+    end
 
 type database = (string, Tree.t) Hashtbl.t * Tree.t
 
@@ -211,15 +236,13 @@ let only_mime_paths (db, tree) =
   let rec go = function
     | Tree.Done -> Tree.Unsafe.leaf
     | Tree.Node lst ->
-        let lst =
-          List.rev_map (fun (elt, sub) -> (Tree.operation elt, sub)) lst
-        in
-        let f acc (operation, sub) =
+        let lst = List.rev lst in
+        let f acc (elt, sub) =
           let sub = go sub in
           let sub_has_mime_tag = has_mime_tag (db, sub) in
-          match operation with
-          | Tree.MIME _ -> (Tree.Unsafe.elt operation, sub) :: acc
-          | _ when sub_has_mime_tag -> (Tree.Unsafe.elt operation, sub) :: acc
+          match Tree.operation elt with
+          | Tree.MIME _ -> (elt, sub) :: acc
+          | _ when sub_has_mime_tag -> (elt, sub) :: acc
           | _ -> acc
         in
         Tree.Unsafe.node (List.fold_left f [] lst)
