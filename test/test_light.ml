@@ -42,4 +42,21 @@ let test02 =
 |html}
     (Some "text/html")
 
-let () = Alcotest.run "file" [ ("simple", [ test00; test01; test02 ]) ]
+let test03 =
+  make_simple_test ~name:"test03 (html vs. c-lang)"
+    {html|<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>unipi</title>
+  <script>window.onload = function () { domain(0); };</script>
+</head>
+<body>
+<h1>Hello MirageOS!</h1>
+</body>
+</html>
+|html}
+    (Some "text/html")
+
+let () =
+  Alcotest.run "file" [ ("simple", [ test00; test01; test02; test03 ]) ]
