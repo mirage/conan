@@ -449,7 +449,7 @@ let process : type s fd error test v.
       match results with
       | [] -> return (Error `Not_found)
       | (_rel_offset, stop) :: _ ->
-          syscall.seek fd Int64.(add abs_offset stop) SET 
+          syscall.seek fd Int64.(add abs_offset stop) SET
           >|= reword_error (fun err -> `Syscall err)
           (* TODO(dinosaure): we should return the pattern as-is into the document
              and not the pattern from the database. *)

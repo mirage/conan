@@ -20,7 +20,6 @@ val pp_operation : Format.formatter -> operation -> unit
 val serialize_operation : Format.formatter -> operation -> unit
 val operation : elt -> operation
 val strength : elt -> int
-
 val fmt : 'a fmt -> unit -> ('a -> 'r, 'r) Fmt.fmt
 val empty : t
 val append : t -> ?filename:string -> ?line:int -> Parse.line -> t
@@ -36,9 +35,7 @@ module Unsafe : sig
     Parse.message ->
     operation
 
-  val elt :
-    ?strength:int -> ?filename:string -> ?line:int -> operation -> elt
-
+  val elt : ?strength:int -> ?filename:string -> ?line:int -> operation -> elt
   val name : offset:Offset.t -> string -> operation
   val use : offset:Offset.t -> invert:bool -> string -> operation
   val mime : string -> operation

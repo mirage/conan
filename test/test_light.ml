@@ -58,5 +58,4 @@ let test03 =
 |html}
     (Some "text/html")
 
-let () =
-  Alcotest.run "file" [ ("simple", [ test00; test01; test02; test03 ]) ]
+let () = Alcotest.run "file" [ ("simple", [ test00; test01; test02; test03 ]) ]

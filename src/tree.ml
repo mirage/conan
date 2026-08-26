@@ -36,7 +36,8 @@ let regex_size str =
     | '\000' | '.' | '?' | '*' | '+' | ',' | '{' | '}' | '[' | ']' | '|' | '('
     | ')' | '\\' ->
         ()
-    | _ -> incr count in
+    | _ -> incr count
+  in
   String.iter fn str;
   if !count = 0 then 1 else !count
 
@@ -68,7 +69,9 @@ let strength_of_rule ((_level, _offset), (_unsigned, kind), test, _message) =
         else Some ((2 * mult) + (len * Int.max (mult / len) 1))
     | `Regex _ ->
         let v =
-          match test with `String c -> regex_size (Comparison.value c) | _ -> 1
+          match test with
+          | `String c -> regex_size (Comparison.value c)
+          | _ -> 1
         in
         Some ((2 * mult) + (v * max (mult / v) 1))
   in
@@ -370,7 +373,8 @@ let rule : Parse.rule -> operation =
           (Ty.search ~lower_case_insensitive:c ~upper_case_insensitive:_C
              (if b || _B then `Binary else `Text)
              0L ~pattern:"")
-    | _, `Search (_, None) | _, `String8 None -> Ty (Ty.search `Text ~pattern:"" 0L)
+    | _, `Search (_, None) | _, `String8 None ->
+        Ty (Ty.search `Text ~pattern:"" 0L)
     | _, `Search (_, Some (flags, range)) ->
         let range = Option.value ~default:0L range in
         let lower_case_insensitive = List.exists (( = ) `c) flags in
@@ -672,14 +676,15 @@ let append tree ?filename ?line:n (line : Parse.line) =
         in
         go 0 tree
       else tree
-  | `Strength arithmetic -> begin
+  | `Strength arithmetic ->
       (* XXX(dinosaure): [!:strength] applies to the last entry which is, by
          construction, the head of our top-level node. *)
-      match tree with
+      begin match tree with
       | Node ((elt, sub) :: rest) ->
           let strength = apply_strength arithmetic elt.strength in
           Node (({ elt with strength }, sub) :: rest)
-      | Node [] | Done -> tree end
+      | Node [] | Done -> tree
+      end
   | _ -> tree
 
 let merge a b =
@@ -704,6 +709,7 @@ module Unsafe = struct
   let use ~offset ~invert name = Use { offset; invert; name }
   let mime str = MIME str
   let extension str = Extension str
+
   let elt ?(strength = 0) ?filename ?line operation =
     { operation; strength; filename; line }
 

@@ -10,23 +10,23 @@
     as a simple [string] with {!run}:
 
     {[
-      let v =
-        {file|0       byte    0x66
+    let v =
+      {file|0       byte    0x66
       >1      byte    0x6f
       >>1     byte    0x6f    foo header
       |file}
 
-      let tree =
-        match Conan_string.tree_of_string v with
-        | Ok tree -> tree
-        | Error (`Msg err) -> failwith err
+    let tree =
+      match Conan_string.tree_of_string v with
+      | Ok tree -> tree
+      | Error (`Msg err) -> failwith err
 
-      let database = Conan.Tree.database ~tree
+    let database = Conan.Tree.database ~tree
 
-      let m =
-        match Conan_string.run ~database contents with
-        | Ok m -> m
-        | Error (`Msg err) -> failwith err
+    let m =
+      match Conan_string.run ~database contents with
+      | Ok m -> m
+      | Error (`Msg err) -> failwith err
     ]} *)
 
 val tree_of_string : string -> (Conan.Tree.t, [> `Msg of string ]) result

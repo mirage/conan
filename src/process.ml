@@ -143,8 +143,8 @@ let descending_walk ({ bind; return } as scheduler) syscall db fd abs_offset
   in
   let rec best syscall abs_offset candidate = function
     | [] -> return candidate
-    | (elt, tree) :: rest -> begin
-        match Tree.operation elt with
+    | (elt, tree) :: rest ->
+        begin match Tree.operation elt with
         | Tree.Name _ -> best syscall abs_offset candidate rest
         | operation -> begin
             iter ~level:0 [] syscall abs_offset Metadata.empty
@@ -157,8 +157,8 @@ let descending_walk ({ bind; return } as scheduler) syscall db fd abs_offset
             | _ when Metadata.is_empty metadata ->
                 best syscall abs_offset candidate rest
             | _ -> best syscall abs_offset (Some (strength, metadata)) rest
+          end
         end
-      end
   in
   match root with
   | Tree.Done -> return metadata
@@ -166,7 +166,7 @@ let descending_walk ({ bind; return } as scheduler) syscall db fd abs_offset
       best syscall abs_offset None (List.rev lst) >>= function
       | None -> return metadata
       | Some (_, metadata') -> return (Metadata.concat metadata metadata')
-      end
+    end
 
 type database = (string, Tree.t) Hashtbl.t * Tree.t
 
