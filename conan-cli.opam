@@ -22,7 +22,6 @@ depends: [
   "fmt"            {with-test}
   "rresult"        {>= "0.6" & with-test}
 ]
-conflicts: ["ocaml-option-flambda"]
 build: [
   ["dune" "subst"] {dev}
   ["dune" "build" "-p" name "-j" jobs]
