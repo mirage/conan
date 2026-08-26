@@ -303,13 +303,22 @@ let search ?(compact_whitespaces = false) ?(optional_blank = false)
       trim;
       range;
       pattern;
-      find = Kmp.find_one ~pattern ();
+      find =
+        Kmp.find_one ~lower_case_insensitive ~upper_case_insensitive
+          ~compact_whitespaces ~optional_blank ~pattern ();
     }
 
 let with_range range = function Search v -> Search { v with range } | t -> t
 
 let with_pattern pattern = function
-  | Search v -> Search { v with pattern; find = Kmp.find_one ~pattern () }
+  | Search v ->
+      let find =
+        Kmp.find_one ~lower_case_insensitive:v.lower_case_insensitive
+          ~upper_case_insensitive:v.upper_case_insensitive
+          ~compact_whitespaces:v.compact_whitespaces
+          ~optional_blank:v.optional_blank ~pattern ()
+      in
+      Search { v with pattern; find }
   | t -> t
 
 let str_unicode endian = Unicode_string endian
