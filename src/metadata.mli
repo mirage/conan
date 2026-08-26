@@ -10,3 +10,4 @@ val mime : t -> string option
 val extensions : t -> string list
 val concat : t -> t -> t
 val empty : t
+val is_empty : t -> bool
